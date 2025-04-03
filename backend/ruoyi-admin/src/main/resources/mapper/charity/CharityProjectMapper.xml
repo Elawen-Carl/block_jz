@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.charity.mapper.CharityProjectMapper">
+    
+    <resultMap type="CharityProject" id="CharityProjectResult">
+        <result property="projectId"    column="project_id"    />
+        <result property="projectName"    column="project_name"    />
+        <result property="projectDesc"    column="project_desc"    />
+        <result property="targetAmount"    column="target_amount"    />
+        <result property="currentAmount"    column="current_amount"    />
+        <result property="initiatorId"    column="initiator_id"    />
+        <result property="initiatorType"    column="initiator_type"    />
+        <result property="coverImage"    column="cover_image"    />
+        <result property="startTime"    column="start_time"    />
+        <result property="endTime"    column="end_time"    />
+        <result property="status"    column="status"    />
+        <result property="blockchainId"    column="blockchain_id"    />
+        <result property="fundUsageRules"    column="fund_usage_rules"    />
+        <result property="auditUserId"    column="audit_user_id"    />
+        <result property="auditTime"    column="audit_time"    />
+        <result property="auditStatus"    column="audit_status"    />
+        <result property="auditRemark"    column="audit_remark"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectCharityProjectVo">
+        select project_id, project_name, project_desc, target_amount, current_amount, initiator_id, initiator_type, cover_image, start_time, end_time, status, blockchain_id, fund_usage_rules, audit_user_id, audit_time, audit_status, audit_remark, create_time, update_time from charity_project
+    </sql>
+
+    <select id="selectCharityProjectList" parameterType="CharityProject" resultMap="CharityProjectResult">
+        <include refid="selectCharityProjectVo"/>
+        <where>  
+            <if test="projectName != null  and projectName != ''"> and project_name like concat('%', #{projectName}, '%')</if>
+            <if test="initiatorId != null "> and initiator_id = #{initiatorId}</if>
+            <if test="initiatorType != null  and initiatorType != ''"> and initiator_type = #{initiatorType}</if>
+            <if test="params.beginStartTime != null and params.beginStartTime != '' and params.endStartTime != null and params.endStartTime != ''"> and start_time between #{params.beginStartTime} and #{params.endStartTime}</if>
+            <if test="params.beginEndTime != null and params.beginEndTime != '' and params.endEndTime != null and params.endEndTime != ''"> and end_time between #{params.beginEndTime} and #{params.endEndTime}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+            <if test="params.beginAuditTime != null and params.beginAuditTime != '' and params.endAuditTime != null and params.endAuditTime != ''"> and audit_time between #{params.beginAuditTime} and #{params.endAuditTime}</if>
+            <if test="auditStatus != null  and auditStatus != ''"> and audit_status = #{auditStatus}</if>
+            <if test="params.beginCreateTime != null and params.beginCreateTime != '' and params.endCreateTime != null and params.endCreateTime != ''"> and create_time between #{params.beginCreateTime} and #{params.endCreateTime}</if>
+        </where>
+    </select>
+    
+    <select id="selectCharityProjectByProjectId" parameterType="Long" resultMap="CharityProjectResult">
+        <include refid="selectCharityProjectVo"/>
+        where project_id = #{projectId}
+    </select>
+
+    <insert id="insertCharityProject" parameterType="CharityProject" useGeneratedKeys="true" keyProperty="projectId">
+        insert into charity_project
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="projectName != null and projectName != ''">project_name,</if>
+            <if test="projectDesc != null and projectDesc != ''">project_desc,</if>
+            <if test="targetAmount != null">target_amount,</if>
+            <if test="currentAmount != null">current_amount,</if>
+            <if test="initiatorId != null">initiator_id,</if>
+            <if test="initiatorType != null and initiatorType != ''">initiator_type,</if>
+            <if test="coverImage != null">cover_image,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="endTime != null">end_time,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="blockchainId != null">blockchain_id,</if>
+            <if test="fundUsageRules != null">fund_usage_rules,</if>
+            <if test="auditUserId != null">audit_user_id,</if>
+            <if test="auditTime != null">audit_time,</if>
+            <if test="auditStatus != null and auditStatus != ''">audit_status,</if>
+            <if test="auditRemark != null">audit_remark,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="projectName != null and projectName != ''">#{projectName},</if>
+            <if test="projectDesc != null and projectDesc != ''">#{projectDesc},</if>
+            <if test="targetAmount != null">#{targetAmount},</if>
+            <if test="currentAmount != null">#{currentAmount},</if>
+            <if test="initiatorId != null">#{initiatorId},</if>
+            <if test="initiatorType != null and initiatorType != ''">#{initiatorType},</if>
+            <if test="coverImage != null">#{coverImage},</if>
+            <if test="startTime != null">#{startTime},</if>
+            <if test="endTime != null">#{endTime},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="blockchainId != null">#{blockchainId},</if>
+            <if test="fundUsageRules != null">#{fundUsageRules},</if>
+            <if test="auditUserId != null">#{auditUserId},</if>
+            <if test="auditTime != null">#{auditTime},</if>
+            <if test="auditStatus != null and auditStatus != ''">#{auditStatus},</if>
+            <if test="auditRemark != null">#{auditRemark},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateCharityProject" parameterType="CharityProject">
+        update charity_project
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="projectName != null and projectName != ''">project_name = #{projectName},</if>
+            <if test="projectDesc != null and projectDesc != ''">project_desc = #{projectDesc},</if>
+            <if test="targetAmount != null">target_amount = #{targetAmount},</if>
+            <if test="currentAmount != null">current_amount = #{currentAmount},</if>
+            <if test="initiatorId != null">initiator_id = #{initiatorId},</if>
+            <if test="initiatorType != null and initiatorType != ''">initiator_type = #{initiatorType},</if>
+            <if test="coverImage != null">cover_image = #{coverImage},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="blockchainId != null">blockchain_id = #{blockchainId},</if>
+            <if test="fundUsageRules != null">fund_usage_rules = #{fundUsageRules},</if>
+            <if test="auditUserId != null">audit_user_id = #{auditUserId},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="auditStatus != null and auditStatus != ''">audit_status = #{auditStatus},</if>
+            <if test="auditRemark != null">audit_remark = #{auditRemark},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where project_id = #{projectId}
+    </update>
+
+    <delete id="deleteCharityProjectByProjectId" parameterType="Long">
+        delete from charity_project where project_id = #{projectId}
+    </delete>
+
+    <delete id="deleteCharityProjectByProjectIds" parameterType="String">
+        delete from charity_project where project_id in 
+        <foreach item="projectId" collection="array" open="(" separator="," close=")">
+            #{projectId}
+        </foreach>
+    </delete>
+</mapper>

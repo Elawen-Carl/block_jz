@@ -1,0 +1,175 @@
+ER图（实体关系图）
+业务流程图
+erDiagram
+    sys_user ||--o{ user_privacy_settings : has
+    sys_user ||--o{ donation_record : donates
+    sys_user ||--o{ charity_project : initiates
+    sys_user ||--o{ project_comment : comments
+    
+    charity_project ||--o{ donation_record : receives
+    charity_project ||--o{ project_comment : has
+    charity_project ||--o{ fund_usage_record : uses
+    
+    donation_record ||--o{ blockchain_transaction : records_as
+    fund_usage_record ||--o{ blockchain_transaction : records_as
+    charity_project ||--o{ blockchain_transaction : records_as
+
+    sys_user {
+        bigint user_id PK
+        varchar user_name
+        varchar nick_name
+        varchar email
+        varchar phonenumber
+        varchar password
+        char status
+    }
+    
+    user_privacy_settings {
+        bigint user_id PK
+        tinyint show_donation_amount
+        tinyint show_donation_list
+        tinyint show_real_name
+        datetime create_time
+        datetime update_time
+    }
+    
+    donation_record {
+        bigint donation_id PK
+        bigint user_id FK
+        bigint project_id FK
+        decimal donation_amount
+        varchar payment_method
+        datetime donation_time
+        char status
+        varchar transaction_hash
+        varchar certificate_url
+        datetime certificate_issue_date
+        varchar remark
+        datetime create_time
+        datetime update_time
+    }
+    
+    charity_project {
+        bigint project_id PK
+        varchar project_name
+        text project_desc
+        decimal target_amount
+        decimal current_amount
+        bigint initiator_id FK
+        char initiator_type
+        varchar cover_image
+        datetime start_time
+        datetime end_time
+        char status
+        varchar blockchain_id
+        text fund_usage_rules
+        bigint audit_user_id
+        datetime audit_time
+        char audit_status
+        varchar audit_remark
+        datetime create_time
+        datetime update_time
+    }
+    
+    project_comment {
+        bigint comment_id PK
+        bigint project_id FK
+        bigint user_id FK
+        text content
+        int rating
+        datetime create_time
+    }
+    
+    fund_usage_record {
+        bigint usage_id PK
+        bigint project_id FK
+        decimal amount
+        varchar usage_desc
+        datetime usage_time
+        varchar proof_url
+        varchar transaction_hash
+        varchar create_by
+        datetime create_time
+    }
+    
+    blockchain_transaction {
+        varchar tx_id PK
+        bigint related_id
+        varchar related_type
+        text tx_data
+        datetime tx_time
+        char tx_status
+        datetime create_time
+    }
+1. 用户注册登录与项目发布流程
+flowchart TD
+    A[用户] --> B{是否已注册}
+    B -->|否| C[注册]
+    B -->|是| D[登录]
+    C --> D
+    D --> E{用户类型}
+    E -->|普通用户| F[浏览项目]
+    E -->|慈善组织| G[发布项目]
+    G --> H[填写项目信息]
+    H --> I[提交审核]
+    I --> J{审核结果}
+    J -->|通过| K[项目上线]
+    J -->|拒绝| L[修改后重新提交]
+    L --> I
+    K --> M[项目进入筹款阶段]
+2. 捐赠流程
+flowchart TD
+    A[用户] --> B[浏览项目列表]
+    B --> C[选择项目]
+    C --> D[填写捐赠信息]
+    D --> E[选择支付方式]
+    E --> F[确认捐赠]
+    F --> G[模拟支付]
+    G --> H{支付结果}
+    H -->|成功| I[生成捐赠记录]
+    I --> J[上链记录交易]
+    J --> K[生成捐赠证书]
+    K --> L[更新项目筹款金额]
+    H -->|失败| M[提示失败]
+    M --> D
+    L --> N[用户查看捐赠记录]
+    N --> O[下载捐赠证书]
+3. 资金使用流程
+flowchart TD
+    A[项目发起方] --> B[申请使用资金]
+    B --> C[填写资金用途]
+    C --> D[上传证明材料]
+    D --> E{是否符合智能合约规则}
+    E -->|是| F[自动审核通过]
+    E -->|否| G[人工审核]
+    G --> H{审核结果}
+    H -->|通过| F
+    H -->|拒绝| I[拒绝申请]
+    F --> J[生成资金使用记录]
+    J --> K[更新项目资金状态]
+    K --> L[上链记录交易]
+    L --> M[捐赠者可查看资金使用情况]
+4. 评价反馈流程
+flowchart TD
+    A[捐赠者] --> B[查看已捐赠项目]
+    B --> C[选择项目进行评价]
+    C --> D[填写评价内容]
+    D --> E[提交评分和评价]
+    E --> F[记录评价信息]
+    F --> G[更新项目评价统计]
+    G --> H[其他用户可查看评价]
+5. 区块链记录与追溯流程
+flowchart TD
+    A[系统事件] --> B{事件类型}
+    B -->|捐赠| C[记录捐赠交易]
+    B -->|资金使用| D[记录资金流向]
+    B -->|项目创建| E[记录项目信息]
+    C --> F[生成区块链交易]
+    D --> F
+    E --> F
+    F --> G[联盟链共识]
+    G --> H[交易上链确认]
+    H --> I[更新交易状态]
+    I --> J[用户查询交易]
+    J --> K[可视化展示交易流向]
+这些图表完整描述了系统的数据关系和业务流程，涵盖了所有6张表的关联关系和主要业务场景。Mermaid格式便于在Markdown文档或支持Mermaid的平台上渲染和展示。

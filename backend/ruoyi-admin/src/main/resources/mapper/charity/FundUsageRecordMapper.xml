@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.charity.mapper.FundUsageRecordMapper">
+    
+    <resultMap type="FundUsageRecord" id="FundUsageRecordResult">
+        <result property="usageId"    column="usage_id"    />
+        <result property="projectId"    column="project_id"    />
+        <result property="amount"    column="amount"    />
+        <result property="usageDesc"    column="usage_desc"    />
+        <result property="usageTime"    column="usage_time"    />
+        <result property="proofUrl"    column="proof_url"    />
+        <result property="transactionHash"    column="transaction_hash"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectFundUsageRecordVo">
+        select usage_id, project_id, amount, usage_desc, usage_time, proof_url, transaction_hash, create_by, create_time from fund_usage_record
+    </sql>
+
+    <select id="selectFundUsageRecordList" parameterType="FundUsageRecord" resultMap="FundUsageRecordResult">
+        <include refid="selectFundUsageRecordVo"/>
+        <where>  
+            <if test="projectId != null "> and project_id = #{projectId}</if>
+            <if test="amount != null "> and amount = #{amount}</if>
+            <if test="params.beginUsageTime != null and params.beginUsageTime != '' and params.endUsageTime != null and params.endUsageTime != ''"> and usage_time between #{params.beginUsageTime} and #{params.endUsageTime}</if>
+            <if test="params.beginCreateTime != null and params.beginCreateTime != '' and params.endCreateTime != null and params.endCreateTime != ''"> and create_time between #{params.beginCreateTime} and #{params.endCreateTime}</if>
+        </where>
+    </select>
+    
+    <select id="selectFundUsageRecordByUsageId" parameterType="Long" resultMap="FundUsageRecordResult">
+        <include refid="selectFundUsageRecordVo"/>
+        where usage_id = #{usageId}
+    </select>
+
+    <insert id="insertFundUsageRecord" parameterType="FundUsageRecord" useGeneratedKeys="true" keyProperty="usageId">
+        insert into fund_usage_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="projectId != null">project_id,</if>
+            <if test="amount != null">amount,</if>
+            <if test="usageDesc != null and usageDesc != ''">usage_desc,</if>
+            <if test="usageTime != null">usage_time,</if>
+            <if test="proofUrl != null and proofUrl != ''">proof_url,</if>
+            <if test="transactionHash != null">transaction_hash,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="projectId != null">#{projectId},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="usageDesc != null and usageDesc != ''">#{usageDesc},</if>
+            <if test="usageTime != null">#{usageTime},</if>
+            <if test="proofUrl != null and proofUrl != ''">#{proofUrl},</if>
+            <if test="transactionHash != null">#{transactionHash},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateFundUsageRecord" parameterType="FundUsageRecord">
+        update fund_usage_record
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="projectId != null">project_id = #{projectId},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="usageDesc != null and usageDesc != ''">usage_desc = #{usageDesc},</if>
+            <if test="usageTime != null">usage_time = #{usageTime},</if>
+            <if test="proofUrl != null and proofUrl != ''">proof_url = #{proofUrl},</if>
+            <if test="transactionHash != null">transaction_hash = #{transactionHash},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where usage_id = #{usageId}
+    </update>
+
+    <delete id="deleteFundUsageRecordByUsageId" parameterType="Long">
+        delete from fund_usage_record where usage_id = #{usageId}
+    </delete>
+
+    <delete id="deleteFundUsageRecordByUsageIds" parameterType="String">
+        delete from fund_usage_record where usage_id in 
+        <foreach item="usageId" collection="array" open="(" separator="," close=")">
+            #{usageId}
+        </foreach>
+    </delete>
+</mapper>

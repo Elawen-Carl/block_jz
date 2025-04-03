@@ -3,8 +3,6 @@ import { createApp } from 'vue'
 import Cookies from 'js-cookie'
 
 import ElementPlus from 'element-plus'
-// 先导入Tailwind CSS，再导入Element Plus样式，确保Element Plus样式优先级更高
-import '@/assets/styles/tailwind.css' // tailwind css
 import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 import locale from 'element-plus/es/locale/lang/zh-cn'

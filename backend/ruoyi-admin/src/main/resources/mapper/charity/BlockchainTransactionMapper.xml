@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.charity.mapper.BlockchainTransactionMapper">
+    
+    <resultMap type="BlockchainTransaction" id="BlockchainTransactionResult">
+        <result property="txId"    column="tx_id"    />
+        <result property="relatedId"    column="related_id"    />
+        <result property="relatedType"    column="related_type"    />
+        <result property="txData"    column="tx_data"    />
+        <result property="txTime"    column="tx_time"    />
+        <result property="txStatus"    column="tx_status"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectBlockchainTransactionVo">
+        select tx_id, related_id, related_type, tx_data, tx_time, tx_status, create_time from blockchain_transaction
+    </sql>
+
+    <select id="selectBlockchainTransactionList" parameterType="BlockchainTransaction" resultMap="BlockchainTransactionResult">
+        <include refid="selectBlockchainTransactionVo"/>
+        <where>  
+            <if test="txId != null  and txId != ''"> and tx_id = #{txId}</if>
+            <if test="relatedId != null "> and related_id = #{relatedId}</if>
+            <if test="relatedType != null  and relatedType != ''"> and related_type = #{relatedType}</if>
+            <if test="params.beginTxTime != null and params.beginTxTime != '' and params.endTxTime != null and params.endTxTime != ''"> and tx_time between #{params.beginTxTime} and #{params.endTxTime}</if>
+            <if test="txStatus != null  and txStatus != ''"> and tx_status = #{txStatus}</if>
+            <if test="params.beginCreateTime != null and params.beginCreateTime != '' and params.endCreateTime != null and params.endCreateTime != ''"> and create_time between #{params.beginCreateTime} and #{params.endCreateTime}</if>
+        </where>
+    </select>
+    
+    <select id="selectBlockchainTransactionByTxId" parameterType="String" resultMap="BlockchainTransactionResult">
+        <include refid="selectBlockchainTransactionVo"/>
+        where tx_id = #{txId}
+    </select>
+
+    <insert id="insertBlockchainTransaction" parameterType="BlockchainTransaction">
+        insert into blockchain_transaction
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="txId != null and txId != ''">tx_id,</if>
+            <if test="relatedId != null">related_id,</if>
+            <if test="relatedType != null and relatedType != ''">related_type,</if>
+            <if test="txData != null and txData != ''">tx_data,</if>
+            <if test="txTime != null">tx_time,</if>
+            <if test="txStatus != null and txStatus != ''">tx_status,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="txId != null and txId != ''">#{txId},</if>
+            <if test="relatedId != null">#{relatedId},</if>
+            <if test="relatedType != null and relatedType != ''">#{relatedType},</if>
+            <if test="txData != null and txData != ''">#{txData},</if>
+            <if test="txTime != null">#{txTime},</if>
+            <if test="txStatus != null and txStatus != ''">#{txStatus},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateBlockchainTransaction" parameterType="BlockchainTransaction">
+        update blockchain_transaction
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="relatedId != null">related_id = #{relatedId},</if>
+            <if test="relatedType != null and relatedType != ''">related_type = #{relatedType},</if>
+            <if test="txData != null and txData != ''">tx_data = #{txData},</if>
+            <if test="txTime != null">tx_time = #{txTime},</if>
+            <if test="txStatus != null and txStatus != ''">tx_status = #{txStatus},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where tx_id = #{txId}
+    </update>
+
+    <delete id="deleteBlockchainTransactionByTxId" parameterType="String">
+        delete from blockchain_transaction where tx_id = #{txId}
+    </delete>
+
+    <delete id="deleteBlockchainTransactionByTxIds" parameterType="String">
+        delete from blockchain_transaction where tx_id in 
+        <foreach item="txId" collection="array" open="(" separator="," close=")">
+            #{txId}
+        </foreach>
+    </delete>
+</mapper>

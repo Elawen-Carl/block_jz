@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.charity.mapper.UserPrivacySettingsMapper">
+    
+    <resultMap type="UserPrivacySettings" id="UserPrivacySettingsResult">
+        <result property="userId"    column="user_id"    />
+        <result property="showDonationAmount"    column="show_donation_amount"    />
+        <result property="showDonationList"    column="show_donation_list"    />
+        <result property="showRealName"    column="show_real_name"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectUserPrivacySettingsVo">
+        select user_id, show_donation_amount, show_donation_list, show_real_name, create_time, update_time from user_privacy_settings
+    </sql>
+
+    <select id="selectUserPrivacySettingsList" parameterType="UserPrivacySettings" resultMap="UserPrivacySettingsResult">
+        <include refid="selectUserPrivacySettingsVo"/>
+        <where>  
+            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="showDonationAmount != null "> and show_donation_amount = #{showDonationAmount}</if>
+            <if test="showDonationList != null "> and show_donation_list = #{showDonationList}</if>
+            <if test="showRealName != null "> and show_real_name like concat('%', #{showRealName}, '%')</if>
+            <if test="createTime != null "> and create_time = #{createTime}</if>
+        </where>
+    </select>
+    
+    <select id="selectUserPrivacySettingsByUserId" parameterType="Long" resultMap="UserPrivacySettingsResult">
+        <include refid="selectUserPrivacySettingsVo"/>
+        where user_id = #{userId}
+    </select>
+
+    <insert id="insertUserPrivacySettings" parameterType="UserPrivacySettings">
+        insert into user_privacy_settings
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="showDonationAmount != null">show_donation_amount,</if>
+            <if test="showDonationList != null">show_donation_list,</if>
+            <if test="showRealName != null">show_real_name,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="showDonationAmount != null">#{showDonationAmount},</if>
+            <if test="showDonationList != null">#{showDonationList},</if>
+            <if test="showRealName != null">#{showRealName},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateUserPrivacySettings" parameterType="UserPrivacySettings">
+        update user_privacy_settings
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="showDonationAmount != null">show_donation_amount = #{showDonationAmount},</if>
+            <if test="showDonationList != null">show_donation_list = #{showDonationList},</if>
+            <if test="showRealName != null">show_real_name = #{showRealName},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where user_id = #{userId}
+    </update>
+
+    <delete id="deleteUserPrivacySettingsByUserId" parameterType="Long">
+        delete from user_privacy_settings where user_id = #{userId}
+    </delete>
+
+    <delete id="deleteUserPrivacySettingsByUserIds" parameterType="String">
+        delete from user_privacy_settings where user_id in 
+        <foreach item="userId" collection="array" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </delete>
+</mapper>

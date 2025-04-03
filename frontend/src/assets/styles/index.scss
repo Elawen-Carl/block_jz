@@ -6,7 +6,6 @@
 @import './btn.scss';
 @import './ruoyi.scss';
 
-
 body {
   height: 100%;
   margin: 0;
@@ -179,7 +178,3 @@ aside {
     margin-bottom: 10px;
   }
 }
-
-// 导入Element Plus和Tailwind CSS冲突修复样式
-// 确保这个导入在最后，这样它的样式会覆盖之前的所有样式
-@import './element-tailwind-fix.scss';
