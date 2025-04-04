@@ -42,6 +42,14 @@ public interface FundUsageRecordMapper
      * @return 结果
      */
     public int updateFundUsageRecord(FundUsageRecord fundUsageRecord);
+    
+    /**
+     * 更新资金使用审核状态
+     * 
+     * @param fundUsageRecord 资金使用记录
+     * @return 结果
+     */
+    public int updateFundAuditStatus(FundUsageRecord fundUsageRecord);
 
     /**
      * 删除资金使用记录

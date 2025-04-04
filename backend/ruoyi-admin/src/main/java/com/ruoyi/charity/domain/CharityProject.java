@@ -85,6 +85,14 @@ public class CharityProject extends BaseEntity
     /** 审核备注 */
     private String auditRemark;
 
+    /** 发起人姓名 */
+    @Excel(name = "发起人姓名")
+    private String initiatorName;
+
+    /** 审核人姓名 */
+    @Excel(name = "审核人姓名")
+    private String auditorName;
+
     public void setProjectId(Long projectId) 
     {
         this.projectId = projectId;
@@ -255,6 +263,26 @@ public class CharityProject extends BaseEntity
         return auditRemark;
     }
 
+    public String getInitiatorName() 
+    {
+        return initiatorName;
+    }
+
+    public void setInitiatorName(String initiatorName) 
+    {
+        this.initiatorName = initiatorName;
+    }
+
+    public String getAuditorName() 
+    {
+        return auditorName;
+    }
+
+    public void setAuditorName(String auditorName) 
+    {
+        this.auditorName = auditorName;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -265,6 +293,7 @@ public class CharityProject extends BaseEntity
             .append("currentAmount", getCurrentAmount())
             .append("initiatorId", getInitiatorId())
             .append("initiatorType", getInitiatorType())
+            .append("initiatorName", getInitiatorName())
             .append("coverImage", getCoverImage())
             .append("startTime", getStartTime())
             .append("endTime", getEndTime())
@@ -275,6 +304,7 @@ public class CharityProject extends BaseEntity
             .append("auditTime", getAuditTime())
             .append("auditStatus", getAuditStatus())
             .append("auditRemark", getAuditRemark())
+            .append("auditorName", getAuditorName())
             .append("createTime", getCreateTime())
             .append("updateTime", getUpdateTime())
             .toString();

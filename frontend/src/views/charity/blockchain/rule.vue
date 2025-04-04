@@ -1,61 +1,30 @@
 <template>
   <div class="app-container">
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="96px">
       <el-form-item label="交易编号" prop="txId">
-        <el-input
-          v-model="queryParams.txId"
-          placeholder="请输入交易编号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
+        <el-input v-model="queryParams.txId" placeholder="请输入交易编号" clearable @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="关联业务编号" prop="relatedId">
-        <el-input
-          v-model="queryParams.relatedId"
-          placeholder="请输入关联业务编号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
+        <el-input v-model="queryParams.relatedId" placeholder="请输入关联业务编号" clearable @keyup.enter="handleQuery" />
       </el-form-item>
-      <el-form-item label="关联业务类型" prop="relatedType">
+      <el-form-item label="关联业务类型" prop="relatedType" style="width: 308px">
         <el-select v-model="queryParams.relatedType" placeholder="请选择关联业务类型" clearable>
-          <el-option
-            v-for="dict in blockchain_related_type"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
+          <el-option v-for="dict in blockchain_related_type" :key="dict.value" :label="dict.label"
+            :value="dict.value" />
         </el-select>
       </el-form-item>
       <el-form-item label="交易时间" style="width: 308px">
-        <el-date-picker
-          v-model="daterangeTxTime"
-          value-format="YYYY-MM-DD"
-          type="daterange"
-          range-separator="-"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-        ></el-date-picker>
+        <el-date-picker v-model="daterangeTxTime" value-format="YYYY-MM-DD" type="daterange" range-separator="-"
+          start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
       </el-form-item>
-      <el-form-item label="交易状态" prop="txStatus">
+      <el-form-item label="交易状态" prop="txStatus" style="width: 308px">
         <el-select v-model="queryParams.txStatus" placeholder="请选择交易状态" clearable>
-          <el-option
-            v-for="dict in blockchain_tx_status"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
+          <el-option v-for="dict in blockchain_tx_status" :key="dict.value" :label="dict.label" :value="dict.value" />
         </el-select>
       </el-form-item>
       <el-form-item label="创建时间" style="width: 308px">
-        <el-date-picker
-          v-model="daterangeCreateTime"
-          value-format="YYYY-MM-DD"
-          type="daterange"
-          range-separator="-"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-        ></el-date-picker>
+        <el-date-picker v-model="daterangeCreateTime" value-format="YYYY-MM-DD" type="daterange" range-separator="-"
+          start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -65,42 +34,20 @@
 
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5">
-        <el-button
-          type="primary"
-          plain
-          icon="Plus"
-          @click="handleAdd"
-          v-hasPermi="['charity:blockchain:add']"
-        >新增</el-button>
+        <el-button type="primary" plain icon="Plus" @click="handleAdd"
+          v-hasPermi="['charity:blockchain:add']">新增</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="Edit"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['charity:blockchain:edit']"
-        >修改</el-button>
+        <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate"
+          v-hasPermi="['charity:blockchain:edit']">修改</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button
-          type="danger"
-          plain
-          icon="Delete"
-          :disabled="multiple"
-          @click="handleDelete"
-          v-hasPermi="['charity:blockchain:remove']"
-        >删除</el-button>
+        <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete"
+          v-hasPermi="['charity:blockchain:remove']">删除</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button
-          type="warning"
-          plain
-          icon="Download"
-          @click="handleExport"
-          v-hasPermi="['charity:blockchain:export']"
-        >导出</el-button>
+        <el-button type="warning" plain icon="Download" @click="handleExport"
+          v-hasPermi="['charity:blockchain:export']">导出</el-button>
       </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
@@ -111,7 +58,7 @@
       <el-table-column label="关联业务编号" align="center" prop="relatedId" />
       <el-table-column label="关联业务类型" align="center" prop="relatedType">
         <template #default="scope">
-          <dict-tag :options="blockchain_related_type" :value="scope.row.relatedType"/>
+          <dict-tag :options="blockchain_related_type" :value="scope.row.relatedType" />
         </template>
       </el-table-column>
       <el-table-column label="交易时间" align="center" prop="txTime" width="180">
@@ -121,7 +68,7 @@
       </el-table-column>
       <el-table-column label="交易状态" align="center" prop="txStatus">
         <template #default="scope">
-          <dict-tag :options="blockchain_tx_status" :value="scope.row.txStatus"/>
+          <dict-tag :options="blockchain_tx_status" :value="scope.row.txStatus" />
         </template>
       </el-table-column>
       <el-table-column label="创建时间" align="center" prop="createTime" width="180">
@@ -131,55 +78,40 @@
       </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['charity:blockchain:edit']">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['charity:blockchain:remove']">删除</el-button>
+          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)"
+            v-hasPermi="['charity:blockchain:edit']">修改</el-button>
+          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)"
+            v-hasPermi="['charity:blockchain:remove']">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
-    
-    <pagination
-      v-show="total>0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
+
+    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum"
+      v-model:limit="queryParams.pageSize" @pagination="getList" />
 
     <!-- 添加或修改区块链交易记录对话框 -->
-    <el-dialog :title="title" v-model="open" width="500px" append-to-body>
-      <el-form ref="blockchainRef" :model="form" :rules="rules" label-width="80px">
+    <el-dialog :title="title" v-model="open" width="700px" append-to-body>
+      <el-form ref="blockchainRef" :model="form" :rules="rules" label-width="180px">
         <el-form-item label="关联业务编号" prop="relatedId">
           <el-input v-model="form.relatedId" placeholder="请输入关联业务编号" />
         </el-form-item>
         <el-form-item label="关联业务类型" prop="relatedType">
           <el-select v-model="form.relatedType" placeholder="请选择关联业务类型">
-            <el-option
-              v-for="dict in blockchain_related_type"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            ></el-option>
+            <el-option v-for="dict in blockchain_related_type" :key="dict.value" :label="dict.label"
+              :value="dict.value"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="交易数据(JSON格式)" prop="txData">
           <el-input v-model="form.txData" type="textarea" placeholder="请输入内容" />
         </el-form-item>
         <el-form-item label="交易时间" prop="txTime">
-          <el-date-picker clearable
-            v-model="form.txTime"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="请选择交易时间">
+          <el-date-picker clearable v-model="form.txTime" type="date" value-format="YYYY-MM-DD" placeholder="请选择交易时间">
           </el-date-picker>
         </el-form-item>
         <el-form-item label="交易状态" prop="txStatus">
           <el-select v-model="form.txStatus" placeholder="请选择交易状态">
-            <el-option
-              v-for="dict in blockchain_tx_status"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            ></el-option>
+            <el-option v-for="dict in blockchain_tx_status" :key="dict.value" :label="dict.label"
+              :value="dict.value"></el-option>
           </el-select>
         </el-form-item>
       </el-form>
@@ -349,12 +281,12 @@ function submitForm() {
 /** 删除按钮操作 */
 function handleDelete(row) {
   const _txIds = row.txId || ids.value;
-  proxy.$modal.confirm('是否确认删除区块链交易记录编号为"' + _txIds + '"的数据项？').then(function() {
+  proxy.$modal.confirm('是否确认删除区块链交易记录编号为"' + _txIds + '"的数据项？').then(function () {
     return delBlockchain(_txIds);
   }).then(() => {
     getList();
     proxy.$modal.msgSuccess("删除成功");
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 /** 导出按钮操作 */

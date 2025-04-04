@@ -31,6 +31,10 @@ public class UserPrivacySettings extends BaseEntity
     @Excel(name = "是否显示真实姓名", readConverterExp = "0=不显示,1=显示")
     private Integer showRealName;
 
+    /** 用户姓名 */
+    @Excel(name = "用户姓名")
+    private String userName;
+
     public void setUserId(Long userId) 
     {
         this.userId = userId;
@@ -71,10 +75,21 @@ public class UserPrivacySettings extends BaseEntity
         return showRealName;
     }
 
+    public String getUserName() 
+    {
+        return userName;
+    }
+
+    public void setUserName(String userName) 
+    {
+        this.userName = userName;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("userId", getUserId())
+            .append("userName", getUserName())
             .append("showDonationAmount", getShowDonationAmount())
             .append("showDonationList", getShowDonationList())
             .append("showRealName", getShowRealName())

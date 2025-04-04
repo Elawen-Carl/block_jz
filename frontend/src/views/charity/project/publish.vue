@@ -36,9 +36,9 @@
           <template #default="scope">
             <el-button link type="primary" icon="View" @click="handleView(scope.row)">查看</el-button>
             <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)"
-              v-if="['0', '2'].includes(scope.row.auditStatus)">修改</el-button>
+              v-if="!['0'].includes(scope.row.auditStatus)">修改</el-button>
             <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)"
-              v-if="!['1'].includes(scope.row.auditStatus)">删除</el-button>
+              v-if="!['0'].includes(scope.row.auditStatus)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -170,7 +170,6 @@ const data = reactive({
     status: "0", // 默认未开始
     blockchainId: null,
     fundUsageRules: null,
-    auditStatus: "0" // 默认待审核
   },
   // 表单校验
   rules: {
@@ -253,6 +252,7 @@ function submitForm() {
   proxy.$refs["projectRef"].validate(valid => {
     if (valid) {
       if (form.value.projectId != null) {
+        form.value.auditStatus = null;
         updateProject(form.value).then(response => {
           proxy.$modal.msgSuccess("修改成功，项目已提交审核");
           isPublishing.value = false;
@@ -295,7 +295,6 @@ function reset() {
     status: "0", // 默认未开始
     blockchainId: null,
     fundUsageRules: null,
-    auditStatus: "0" // 默认待审核
   };
   projectTime.value = [];
   proxy.resetForm("projectRef");

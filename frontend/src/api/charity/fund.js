@@ -42,3 +42,12 @@ export function delFund(usageId) {
     method: 'delete'
   })
 }
+
+// 审核资金使用申请
+export function auditFund(data) {
+  return request({
+    url: '/charity/fund/audit',
+    method: 'put',
+    data: data
+  })
+}

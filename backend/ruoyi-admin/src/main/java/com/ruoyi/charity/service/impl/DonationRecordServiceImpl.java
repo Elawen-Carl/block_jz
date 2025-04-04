@@ -1,12 +1,13 @@
 package com.ruoyi.charity.service.impl;
 
-import java.util.List;
+import com.ruoyi.charity.domain.DonationRecord;
+import com.ruoyi.charity.mapper.DonationRecordMapper;
+import com.ruoyi.charity.service.IDonationRecordService;
 import com.ruoyi.common.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.ruoyi.charity.mapper.DonationRecordMapper;
-import com.ruoyi.charity.domain.DonationRecord;
-import com.ruoyi.charity.service.IDonationRecordService;
+
+import java.util.List;
 
 /**
  * 捐赠记录Service业务层处理
@@ -54,6 +55,7 @@ public class DonationRecordServiceImpl implements IDonationRecordService
     public int insertDonationRecord(DonationRecord donationRecord)
     {
         donationRecord.setCreateTime(DateUtils.getNowDate());
+        donationRecord.setDonationTime(DateUtils.getNowDate());
         return donationRecordMapper.insertDonationRecord(donationRecord);
     }
 
@@ -67,6 +69,7 @@ public class DonationRecordServiceImpl implements IDonationRecordService
     public int updateDonationRecord(DonationRecord donationRecord)
     {
         donationRecord.setUpdateTime(DateUtils.getNowDate());
+
         return donationRecordMapper.updateDonationRecord(donationRecord);
     }
 

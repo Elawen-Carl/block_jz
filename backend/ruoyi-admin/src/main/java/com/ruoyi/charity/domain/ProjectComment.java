@@ -23,6 +23,10 @@ public class ProjectComment extends BaseEntity
     @Excel(name = "项目编号")
     private Long projectId;
 
+    /** 项目名称 */
+    @Excel(name = "项目名称")
+    private String projectName;
+
     /** 用户编号 */
     @Excel(name = "用户编号")
     private Long userId;
@@ -34,6 +38,10 @@ public class ProjectComment extends BaseEntity
     /** 评分 */
     @Excel(name = "评分")
     private Long rating;
+
+    /** 用户姓名 */
+    @Excel(name = "用户姓名")
+    private String userName;
 
     public void setCommentId(Long commentId) 
     {
@@ -85,12 +93,33 @@ public class ProjectComment extends BaseEntity
         return rating;
     }
 
+    public String getUserName() 
+    {
+        return userName;
+    }
+
+    public void setUserName(String userName) 
+    {
+        this.userName = userName;
+    }
+
+
+    public String getProjectName() {
+        return projectName;
+    }
+
+    public void setProjectName(String projectName) {
+        this.projectName = projectName;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("commentId", getCommentId())
             .append("projectId", getProjectId())
+            .append("projectName", getProjectName())
             .append("userId", getUserId())
+            .append("userName", getUserName())
             .append("content", getContent())
             .append("rating", getRating())
             .append("createTime", getCreateTime())

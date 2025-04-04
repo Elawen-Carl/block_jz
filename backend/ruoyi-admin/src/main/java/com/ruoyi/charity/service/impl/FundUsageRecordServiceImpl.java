@@ -1,5 +1,6 @@
 package com.ruoyi.charity.service.impl;
 
+import java.util.Date;
 import java.util.List;
 import com.ruoyi.common.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +55,10 @@ public class FundUsageRecordServiceImpl implements IFundUsageRecordService
     public int insertFundUsageRecord(FundUsageRecord fundUsageRecord)
     {
         fundUsageRecord.setCreateTime(DateUtils.getNowDate());
+        // 如果没有设置申请状态，默认设置为待审核
+        if (fundUsageRecord.getApplicationStatus() == null) {
+            fundUsageRecord.setApplicationStatus("1");
+        }
         return fundUsageRecordMapper.insertFundUsageRecord(fundUsageRecord);
     }
 
@@ -67,6 +72,22 @@ public class FundUsageRecordServiceImpl implements IFundUsageRecordService
     public int updateFundUsageRecord(FundUsageRecord fundUsageRecord)
     {
         return fundUsageRecordMapper.updateFundUsageRecord(fundUsageRecord);
+    }
+    
+    /**
+     * 审核资金使用申请
+     * 
+     * @param fundUsageRecord 资金使用记录
+     * @return 结果
+     */
+    @Override
+    public int auditFundUsageRecord(FundUsageRecord fundUsageRecord)
+    {
+        // 如果没有设置审核时间，默认为当前时间
+        if (fundUsageRecord.getAuditTime() == null) {
+            fundUsageRecord.setAuditTime(new Date());
+        }
+        return fundUsageRecordMapper.updateFundAuditStatus(fundUsageRecord);
     }
 
     /**

@@ -42,6 +42,14 @@ public interface IFundUsageRecordService
      * @return 结果
      */
     public int updateFundUsageRecord(FundUsageRecord fundUsageRecord);
+    
+    /**
+     * 审核资金使用申请
+     * 
+     * @param fundUsageRecord 资金使用记录
+     * @return 结果
+     */
+    public int auditFundUsageRecord(FundUsageRecord fundUsageRecord);
 
     /**
      * 批量删除资金使用记录

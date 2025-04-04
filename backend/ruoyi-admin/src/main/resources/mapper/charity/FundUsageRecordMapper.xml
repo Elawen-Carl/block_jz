@@ -7,9 +7,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="FundUsageRecord" id="FundUsageRecordResult">
         <result property="usageId"    column="usage_id"    />
         <result property="projectId"    column="project_id"    />
+        <result property="projectName"    column="project_name"    />
         <result property="amount"    column="amount"    />
         <result property="usageDesc"    column="usage_desc"    />
         <result property="usageTime"    column="usage_time"    />
+        <result property="applicationStatus"    column="application_status"    />
+        <result property="auditor"    column="auditor"    />
+        <result property="auditTime"    column="audit_time"    />
+        <result property="auditRemark"    column="audit_remark"    />
         <result property="proofUrl"    column="proof_url"    />
         <result property="transactionHash"    column="transaction_hash"    />
         <result property="createBy"    column="create_by"    />
@@ -17,22 +22,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectFundUsageRecordVo">
-        select usage_id, project_id, amount, usage_desc, usage_time, proof_url, transaction_hash, create_by, create_time from fund_usage_record
+        select f.usage_id, f.project_id, p.project_name, f.amount, f.usage_desc, f.usage_time, 
+        f.application_status, f.auditor, f.audit_time, f.audit_remark, 
+        f.proof_url, f.transaction_hash, f.create_by, f.create_time 
+        from fund_usage_record f 
+        left join charity_project p on f.project_id = p.project_id
     </sql>
 
     <select id="selectFundUsageRecordList" parameterType="FundUsageRecord" resultMap="FundUsageRecordResult">
         <include refid="selectFundUsageRecordVo"/>
         <where>  
-            <if test="projectId != null "> and project_id = #{projectId}</if>
-            <if test="amount != null "> and amount = #{amount}</if>
-            <if test="params.beginUsageTime != null and params.beginUsageTime != '' and params.endUsageTime != null and params.endUsageTime != ''"> and usage_time between #{params.beginUsageTime} and #{params.endUsageTime}</if>
-            <if test="params.beginCreateTime != null and params.beginCreateTime != '' and params.endCreateTime != null and params.endCreateTime != ''"> and create_time between #{params.beginCreateTime} and #{params.endCreateTime}</if>
+            <if test="projectId != null "> and f.project_id = #{projectId}</if>
+            <if test="projectName != null and projectName != ''"> and p.project_name like concat('%', #{projectName}, '%')</if>
+            <if test="amount != null "> and f.amount = #{amount}</if>
+            <if test="applicationStatus != null "> and f.application_status = #{applicationStatus}</if>
+            <if test="params.beginUsageTime != null and params.beginUsageTime != '' and params.endUsageTime != null and params.endUsageTime != ''"> and f.usage_time between #{params.beginUsageTime} and #{params.endUsageTime}</if>
+            <if test="params.beginCreateTime != null and params.beginCreateTime != '' and params.endCreateTime != null and params.endCreateTime != ''"> and f.create_time between #{params.beginCreateTime} and #{params.endCreateTime}</if>
         </where>
     </select>
     
     <select id="selectFundUsageRecordByUsageId" parameterType="Long" resultMap="FundUsageRecordResult">
         <include refid="selectFundUsageRecordVo"/>
-        where usage_id = #{usageId}
+        where f.usage_id = #{usageId}
     </select>
 
     <insert id="insertFundUsageRecord" parameterType="FundUsageRecord" useGeneratedKeys="true" keyProperty="usageId">
@@ -42,6 +53,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="amount != null">amount,</if>
             <if test="usageDesc != null and usageDesc != ''">usage_desc,</if>
             <if test="usageTime != null">usage_time,</if>
+            <if test="applicationStatus != null">application_status,</if>
+            <if test="auditor != null">auditor,</if>
+            <if test="auditTime != null">audit_time,</if>
+            <if test="auditRemark != null">audit_remark,</if>
             <if test="proofUrl != null and proofUrl != ''">proof_url,</if>
             <if test="transactionHash != null">transaction_hash,</if>
             <if test="createBy != null">create_by,</if>
@@ -52,6 +67,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="amount != null">#{amount},</if>
             <if test="usageDesc != null and usageDesc != ''">#{usageDesc},</if>
             <if test="usageTime != null">#{usageTime},</if>
+            <if test="applicationStatus != null">#{applicationStatus},</if>
+            <if test="auditor != null">#{auditor},</if>
+            <if test="auditTime != null">#{auditTime},</if>
+            <if test="auditRemark != null">#{auditRemark},</if>
             <if test="proofUrl != null and proofUrl != ''">#{proofUrl},</if>
             <if test="transactionHash != null">#{transactionHash},</if>
             <if test="createBy != null">#{createBy},</if>
@@ -66,11 +85,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="amount != null">amount = #{amount},</if>
             <if test="usageDesc != null and usageDesc != ''">usage_desc = #{usageDesc},</if>
             <if test="usageTime != null">usage_time = #{usageTime},</if>
+            <if test="applicationStatus != null">application_status = #{applicationStatus},</if>
+            <if test="auditor != null">auditor = #{auditor},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="auditRemark != null">audit_remark = #{auditRemark},</if>
             <if test="proofUrl != null and proofUrl != ''">proof_url = #{proofUrl},</if>
             <if test="transactionHash != null">transaction_hash = #{transactionHash},</if>
-            <if test="createBy != null">create_by = #{createBy},</if>
-            <if test="createTime != null">create_time = #{createTime},</if>
         </trim>
+        where usage_id = #{usageId}
+    </update>
+    
+    <update id="updateFundAuditStatus" parameterType="FundUsageRecord">
+        update fund_usage_record
+        set application_status = #{applicationStatus},
+            auditor = #{auditor},
+            audit_time = #{auditTime},
+            audit_remark = #{auditRemark}
         where usage_id = #{usageId}
     </update>
 

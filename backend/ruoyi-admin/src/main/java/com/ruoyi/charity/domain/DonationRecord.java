@@ -1,12 +1,13 @@
 package com.ruoyi.charity.domain;
 
-import java.math.BigDecimal;
-import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonFormat;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
 import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.core.domain.BaseEntity;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
+import java.math.BigDecimal;
+import java.util.Date;
 
 /**
  * 捐赠记录对象 donation_record
@@ -60,6 +61,14 @@ public class DonationRecord extends BaseEntity
     @Excel(name = "证书颁发日期", width = 30, dateFormat = "yyyy-MM-dd")
     private Date certificateIssueDate;
 
+    /** 用户姓名 */
+    @Excel(name = "用户姓名")
+    private String userName;
+
+    /** 项目名称 */
+    @Excel(name = "项目名称")
+    private String projectName;
+
     public void setDonationId(Long donationId) 
     {
         this.donationId = donationId;
@@ -98,6 +107,26 @@ public class DonationRecord extends BaseEntity
     public BigDecimal getDonationAmount() 
     {
         return donationAmount;
+    }
+
+    public String getUserName() 
+    {
+        return userName;
+    }
+
+    public void setUserName(String userName) 
+    {
+        this.userName = userName;
+    }
+
+    public String getProjectName() 
+    {
+        return projectName;
+    }
+
+    public void setProjectName(String projectName) 
+    {
+        this.projectName = projectName;
     }
 
     public void setPaymentMethod(String paymentMethod) 
@@ -165,7 +194,9 @@ public class DonationRecord extends BaseEntity
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("donationId", getDonationId())
             .append("userId", getUserId())
+            .append("userName", getUserName())
             .append("projectId", getProjectId())
+            .append("projectName", getProjectName())
             .append("donationAmount", getDonationAmount())
             .append("paymentMethod", getPaymentMethod())
             .append("donationTime", getDonationTime())

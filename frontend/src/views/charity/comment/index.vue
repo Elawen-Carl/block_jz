@@ -1,31 +1,15 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-      <el-form-item label="项目编号" prop="projectId">
-        <el-input
-          v-model="queryParams.projectId"
-          placeholder="请输入项目编号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
+      <el-form-item label="项目名称" prop="projectName">
+        <el-input v-model="queryParams.projectName" placeholder="请输入项目名称" clearable @keyup.enter="handleQuery" />
       </el-form-item>
-      <el-form-item label="用户编号" prop="userId">
-        <el-input
-          v-model="queryParams.userId"
-          placeholder="请输入用户编号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
+      <el-form-item label="用户名称" prop="userName" style="width: 308px">
+        <el-input v-model="queryParams.userName" placeholder="请输入用户名称" clearable @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="创建时间" style="width: 308px">
-        <el-date-picker
-          v-model="daterangeCreateTime"
-          value-format="YYYY-MM-DD"
-          type="daterange"
-          range-separator="-"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-        ></el-date-picker>
+        <el-date-picker v-model="daterangeCreateTime" value-format="YYYY-MM-DD" type="daterange" range-separator="-"
+          start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -35,42 +19,17 @@
 
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5">
-        <el-button
-          type="primary"
-          plain
-          icon="Plus"
-          @click="handleAdd"
-          v-hasPermi="['charity:comment:add']"
-        >新增</el-button>
+        <el-button type="primary" plain icon="Plus" @click="handleAdd"
+          v-hasPermi="['charity:comment:add']">新增</el-button>
+      </el-col>
+
+      <el-col :span="1.5">
+        <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete"
+          v-hasPermi="['charity:comment:remove']">删除</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="Edit"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['charity:comment:edit']"
-        >修改</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="danger"
-          plain
-          icon="Delete"
-          :disabled="multiple"
-          @click="handleDelete"
-          v-hasPermi="['charity:comment:remove']"
-        >删除</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="warning"
-          plain
-          icon="Download"
-          @click="handleExport"
-          v-hasPermi="['charity:comment:export']"
-        >导出</el-button>
+        <el-button type="warning" plain icon="Download" @click="handleExport"
+          v-hasPermi="['charity:comment:export']">导出</el-button>
       </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
@@ -78,8 +37,8 @@
     <el-table v-loading="loading" :data="commentList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="评价编号" align="center" prop="commentId" />
-      <el-table-column label="项目编号" align="center" prop="projectId" />
-      <el-table-column label="用户编号" align="center" prop="userId" />
+      <el-table-column label="项目名称" align="center" prop="projectName" />
+      <el-table-column label="用户" align="center" prop="userName" />
       <el-table-column label="评价内容" align="center" prop="content" />
       <el-table-column label="评分" align="center" prop="rating" />
       <el-table-column label="创建时间" align="center" prop="createTime" width="180">
@@ -89,40 +48,15 @@
       </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['charity:comment:edit']">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['charity:comment:remove']">删除</el-button>
+          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)"
+            v-hasPermi="['charity:comment:remove']">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
-    
-    <pagination
-      v-show="total>0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
 
-    <!-- 添加或修改项目评价对话框 -->
-    <el-dialog :title="title" v-model="open" width="500px" append-to-body>
-      <el-form ref="commentRef" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="项目编号" prop="projectId">
-          <el-input v-model="form.projectId" placeholder="请输入项目编号" />
-        </el-form-item>
-        <el-form-item label="用户编号" prop="userId">
-          <el-input v-model="form.userId" placeholder="请输入用户编号" />
-        </el-form-item>
-        <el-form-item label="评价内容" prop="content">
-          <el-input v-model="form.content" type="textarea" placeholder="请输入内容" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
-      </template>
-    </el-dialog>
+    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum"
+      v-model:limit="queryParams.pageSize" @pagination="getList" />
+
   </div>
 </template>
 
@@ -151,23 +85,6 @@ const data = reactive({
     userId: null,
     createTime: null
   },
-  rules: {
-    commentId: [
-      { required: true, message: "评价编号不能为空", trigger: "blur" }
-    ],
-    projectId: [
-      { required: true, message: "项目编号不能为空", trigger: "blur" }
-    ],
-    userId: [
-      { required: true, message: "用户编号不能为空", trigger: "blur" }
-    ],
-    content: [
-      { required: true, message: "评价内容不能为空", trigger: "blur" }
-    ],
-    rating: [
-      { required: true, message: "评分不能为空", trigger: "blur" }
-    ],
-  }
 });
 
 const { queryParams, form, rules } = toRefs(data);
@@ -233,17 +150,6 @@ function handleAdd() {
   title.value = "添加项目评价";
 }
 
-/** 修改按钮操作 */
-function handleUpdate(row) {
-  reset();
-  const _commentId = row.commentId || ids.value
-  getComment(_commentId).then(response => {
-    form.value = response.data;
-    open.value = true;
-    title.value = "修改项目评价";
-  });
-}
-
 /** 提交按钮 */
 function submitForm() {
   proxy.$refs["commentRef"].validate(valid => {
@@ -268,12 +174,12 @@ function submitForm() {
 /** 删除按钮操作 */
 function handleDelete(row) {
   const _commentIds = row.commentId || ids.value;
-  proxy.$modal.confirm('是否确认删除项目评价编号为"' + _commentIds + '"的数据项？').then(function() {
+  proxy.$modal.confirm('是否确认删除项目评价编号为"' + _commentIds + '"的数据项？').then(function () {
     return delComment(_commentIds);
   }).then(() => {
     getList();
     proxy.$modal.msgSuccess("删除成功");
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 /** 导出按钮操作 */

@@ -9,12 +9,6 @@
           <el-option v-for="dict in charity_initiator_type" :key="dict.value" :label="dict.label" :value="dict.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="审核状态" prop="auditStatus" style="width: 254px;">
-        <el-select v-model="queryParams.auditStatus" placeholder="请选择审核状态" clearable>
-          <el-option v-for="dict in charity_project_audit_status" :key="dict.value" :label="dict.label"
-            :value="dict.value" />
-        </el-select>
-      </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
         <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -55,6 +49,11 @@
           <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d}') }}</span>
         </template>
       </el-table-column>
+      <el-table-column label="项目状态" align="center" prop="status">
+        <template #default="scope">
+          <dict-tag :options="charity_project_status" :value="scope.row.status" />
+        </template>
+      </el-table-column>
       <el-table-column label="审核状态" align="center" prop="auditStatus">
         <template #default="scope">
           <dict-tag :options="charity_project_audit_status" :value="scope.row.auditStatus" />
@@ -63,10 +62,10 @@
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
           <el-button link type="primary" icon="View" @click="handleView(scope.row)">查看</el-button>
-          <el-button v-if="String(scope.row.auditStatus) === '0'" link type="success" icon="Check"
-            @click="handleAudit(scope.row, true)">通过</el-button>
-          <el-button v-if="String(scope.row.auditStatus) === '0'" link type="danger" icon="Close"
-            @click="handleAudit(scope.row, false)">拒绝</el-button>
+          <el-button v-if="String(scope.row.auditStatus) !== '0'" link type="success" icon="Check"
+            @click="handleAudit(scope.row, false)">通过</el-button>
+          <el-button v-if="String(scope.row.auditStatus) !== '0'" link type="danger" icon="Close"
+            @click="handleAudit(scope.row, true)">拒绝</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -83,7 +82,7 @@
         </el-descriptions-item>
         <el-descriptions-item label="目标金额">{{ projectDetail.targetAmount }}元</el-descriptions-item>
         <el-descriptions-item label="开始时间">{{ parseTime(projectDetail.startTime, '{y}-{m}-{d}')
-          }}</el-descriptions-item>
+        }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ parseTime(projectDetail.endTime, '{y}-{m}-{d}') }}</el-descriptions-item>
         <el-descriptions-item label="审核状态">
           <dict-tag :options="charity_project_audit_status" :value="projectDetail.auditStatus" />
@@ -99,9 +98,9 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button v-if="String(projectDetail.auditStatus) === '0'" type="success"
-            @click="handleAudit(projectDetail, true)">通过审核</el-button>
+            @click="handleAudit(projectDetail, false)">通过审核</el-button>
           <el-button v-if="String(projectDetail.auditStatus) === '0'" type="danger"
-            @click="handleAudit(projectDetail, false)">拒绝审核</el-button>
+            @click="handleAudit(projectDetail, true)">拒绝审核</el-button>
           <el-button @click="detailOpen = false">关闭</el-button>
         </div>
       </template>
@@ -164,9 +163,8 @@ const data = reactive({
     initiatorType: null,
     startTime: null,
     endTime: null,
-    status: null,
+    status: "0",
     auditTime: null,
-    auditStatus: null,
     createTime: null,
   },
   rules: {
@@ -271,7 +269,6 @@ function reset() {
     fundUsageRules: null,
     auditUserId: null,
     auditTime: null,
-    auditStatus: null,
     auditRemark: null,
     createTime: null,
     updateTime: null
@@ -292,7 +289,6 @@ function resetQuery() {
   daterangeAuditTime.value = [];
   daterangeCreateTime.value = [];
   proxy.resetForm("queryRef");
-  queryParams.value.auditStatus = '1';
   handleQuery();
 }
 
@@ -318,27 +314,6 @@ function handleUpdate(row) {
     form.value = response.data;
     open.value = true;
     title.value = "修改慈善项目";
-  });
-}
-
-/** 提交按钮 */
-function submitForm() {
-  proxy.$refs["projectRef"].validate(valid => {
-    if (valid) {
-      if (form.value.projectId != null) {
-        updateProject(form.value).then(response => {
-          proxy.$modal.msgSuccess("修改成功");
-          open.value = false;
-          getList();
-        });
-      } else {
-        addProject(form.value).then(response => {
-          proxy.$modal.msgSuccess("新增成功");
-          open.value = false;
-          getList();
-        });
-      }
-    }
   });
 }
 
@@ -374,7 +349,7 @@ function handleAudit(row, approve) {
   auditForm.value = {
     projectId: row.projectId,
     projectName: row.projectName,
-    auditStatus: approve ? '1' : '2',  // 1:通过, 2:拒绝
+    auditStatus: approve ? '1' : '0',  // 1:通过, 0:拒绝
     auditUserId: userStore.userId,
     auditRemark: ''
   };
@@ -387,15 +362,14 @@ function submitAudit() {
     if (valid) {
       const data = {
         projectId: auditForm.value.projectId,
-        auditStatus: auditForm.value.auditStatus,
         auditUserId: auditForm.value.auditUserId,
         auditRemark: auditForm.value.auditRemark,
-        auditTime: new Date(),
-        status: auditForm.value.auditStatus === '1' ? '1' : '0' // 审核通过则状态为进行中(1)，否则为未开始(0)
+        status: auditForm.value.auditStatus === '0' ? '1' : '0', // 审核通过则状态为通过(1)，否则为拒绝(0)
+        auditStatus: auditForm.value.auditStatus,
       };
 
       updateProject(data).then(response => {
-        proxy.$modal.msgSuccess(isApprove.value ? "审核通过成功" : "审核拒绝成功");
+        proxy.$modal.msgSuccess(isApprove.value ? "审核拒绝成功" : "审核通过成功");
         auditOpen.value = false;
         getList();
         if (detailOpen.value) {

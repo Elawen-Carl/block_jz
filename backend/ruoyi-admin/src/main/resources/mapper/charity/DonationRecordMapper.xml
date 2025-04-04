@@ -7,7 +7,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="DonationRecord" id="DonationRecordResult">
         <result property="donationId"    column="donation_id"    />
         <result property="userId"    column="user_id"    />
+        <result property="userName"    column="user_name"    />
         <result property="projectId"    column="project_id"    />
+        <result property="projectName"    column="project_name"    />
         <result property="donationAmount"    column="donation_amount"    />
         <result property="paymentMethod"    column="payment_method"    />
         <result property="donationTime"    column="donation_time"    />
@@ -21,7 +23,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectDonationRecordVo">
-        select donation_id, user_id, project_id, donation_amount, payment_method, donation_time, status, transaction_hash, certificate_url, certificate_issue_date, remark, create_time, update_time from donation_record
+        select dr.donation_id, dr.user_id, dr.project_id, dr.donation_amount, dr.payment_method, dr.donation_time, dr.status, 
+        dr.transaction_hash, dr.certificate_url, dr.certificate_issue_date, dr.remark, dr.create_time, dr.update_time,
+        u.nick_name as user_name, cp.project_name
+        from donation_record dr
+        left join sys_user u on dr.user_id = u.user_id
+        left join charity_project cp on dr.project_id = cp.project_id
     </sql>
 
     <select id="selectDonationRecordList" parameterType="DonationRecord" resultMap="DonationRecordResult">

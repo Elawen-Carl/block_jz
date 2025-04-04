@@ -2,48 +2,10 @@
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
       <el-form-item label="用户编号" prop="userId">
-        <el-input
-          v-model="queryParams.userId"
-          placeholder="请输入用户编号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="是否显示捐赠金额" prop="showDonationAmount">
-        <el-select v-model="queryParams.showDonationAmount" placeholder="请选择是否显示捐赠金额" clearable>
-          <el-option
-            v-for="dict in sys_yes_no"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="是否在捐赠列表显示" prop="showDonationList">
-        <el-select v-model="queryParams.showDonationList" placeholder="请选择是否在捐赠列表显示" clearable>
-          <el-option
-            v-for="dict in sys_yes_no"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="是否显示真实姓名" prop="showRealName">
-        <el-select v-model="queryParams.showRealName" placeholder="请选择是否显示真实姓名" clearable>
-          <el-option
-            v-for="dict in sys_yes_no"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
+        <el-input v-model="queryParams.userId" placeholder="请输入用户编号" clearable @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="创建时间" prop="createTime">
-        <el-date-picker clearable
-          v-model="queryParams.createTime"
-          type="date"
-          value-format="YYYY-MM-DD"
+        <el-date-picker clearable v-model="queryParams.createTime" type="date" value-format="YYYY-MM-DD"
           placeholder="请选择创建时间">
         </el-date-picker>
       </el-form-item>
@@ -55,42 +17,20 @@
 
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5">
-        <el-button
-          type="primary"
-          plain
-          icon="Plus"
-          @click="handleAdd"
-          v-hasPermi="['charity:privacy:add']"
-        >新增</el-button>
+        <el-button type="primary" plain icon="Plus" @click="handleAdd"
+          v-hasPermi="['charity:privacy:add']">新增</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="Edit"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['charity:privacy:edit']"
-        >修改</el-button>
+        <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate"
+          v-hasPermi="['charity:privacy:edit']">修改</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button
-          type="danger"
-          plain
-          icon="Delete"
-          :disabled="multiple"
-          @click="handleDelete"
-          v-hasPermi="['charity:privacy:remove']"
-        >删除</el-button>
+        <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete"
+          v-hasPermi="['charity:privacy:remove']">删除</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button
-          type="warning"
-          plain
-          icon="Download"
-          @click="handleExport"
-          v-hasPermi="['charity:privacy:export']"
-        >导出</el-button>
+        <el-button type="warning" plain icon="Download" @click="handleExport"
+          v-hasPermi="['charity:privacy:export']">导出</el-button>
       </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
@@ -100,17 +40,17 @@
       <el-table-column label="用户编号" align="center" prop="userId" />
       <el-table-column label="是否显示捐赠金额" align="center" prop="showDonationAmount">
         <template #default="scope">
-          <dict-tag :options="sys_yes_no" :value="scope.row.showDonationAmount"/>
+          <dict-tag :options="sys_yes_no" :value="scope.row.showDonationAmount" />
         </template>
       </el-table-column>
       <el-table-column label="是否在捐赠列表显示" align="center" prop="showDonationList">
         <template #default="scope">
-          <dict-tag :options="sys_yes_no" :value="scope.row.showDonationList"/>
+          <dict-tag :options="sys_yes_no" :value="scope.row.showDonationList" />
         </template>
       </el-table-column>
       <el-table-column label="是否显示真实姓名" align="center" prop="showRealName">
         <template #default="scope">
-          <dict-tag :options="sys_yes_no" :value="scope.row.showRealName"/>
+          <dict-tag :options="sys_yes_no" :value="scope.row.showRealName" />
         </template>
       </el-table-column>
       <el-table-column label="创建时间" align="center" prop="createTime" width="180">
@@ -120,48 +60,36 @@
       </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['charity:privacy:edit']">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['charity:privacy:remove']">删除</el-button>
+          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)"
+            v-hasPermi="['charity:privacy:edit']">修改</el-button>
+          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)"
+            v-hasPermi="['charity:privacy:remove']">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
-    
-    <pagination
-      v-show="total>0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
+
+    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum"
+      v-model:limit="queryParams.pageSize" @pagination="getList" />
 
     <!-- 添加或修改用户隐私设置对话框 -->
     <el-dialog :title="title" v-model="open" width="500px" append-to-body>
       <el-form ref="privacyRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="是否显示捐赠金额" prop="showDonationAmount">
           <el-radio-group v-model="form.showDonationAmount">
-            <el-radio
-              v-for="dict in sys_yes_no"
-              :key="dict.value"
-              :label="parseInt(dict.value)"
-            >{{dict.label}}</el-radio>
+            <el-radio v-for="dict in sys_yes_no" :key="dict.value" :label="parseInt(dict.value)">{{ dict.label
+              }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="是否在捐赠列表显示" prop="showDonationList">
           <el-radio-group v-model="form.showDonationList">
-            <el-radio
-              v-for="dict in sys_yes_no"
-              :key="dict.value"
-              :label="parseInt(dict.value)"
-            >{{dict.label}}</el-radio>
+            <el-radio v-for="dict in sys_yes_no" :key="dict.value" :label="parseInt(dict.value)">{{ dict.label
+              }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="是否显示真实姓名" prop="showRealName">
           <el-radio-group v-model="form.showRealName">
-            <el-radio
-              v-for="dict in sys_yes_no"
-              :key="dict.value"
-              :label="parseInt(dict.value)"
-            >{{dict.label}}</el-radio>
+            <el-radio v-for="dict in sys_yes_no" :key="dict.value" :label="parseInt(dict.value)">{{ dict.label
+              }}</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -307,12 +235,12 @@ function submitForm() {
 /** 删除按钮操作 */
 function handleDelete(row) {
   const _userIds = row.userId || ids.value;
-  proxy.$modal.confirm('是否确认删除用户隐私设置编号为"' + _userIds + '"的数据项？').then(function() {
+  proxy.$modal.confirm('是否确认删除用户隐私设置编号为"' + _userIds + '"的数据项？').then(function () {
     return delPrivacy(_userIds);
   }).then(() => {
     getList();
     proxy.$modal.msgSuccess("删除成功");
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 /** 导出按钮操作 */

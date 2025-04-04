@@ -39,6 +39,23 @@ public class FundUsageRecord extends BaseEntity
     @Excel(name = "使用时间", width = 30, dateFormat = "yyyy-MM-dd")
     private Date usageTime;
 
+    /** 申请状态（0未提交 1待审核 2已审核） */
+    @Excel(name = "申请状态", readConverterExp = "0=未提交,1=待审核,2=已审核")
+    private String applicationStatus;
+
+    /** 审核人 */
+    @Excel(name = "审核人")
+    private String auditor;
+    
+    /** 审核时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Excel(name = "审核时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
+    private Date auditTime;
+    
+    /** 审核备注 */
+    @Excel(name = "审核备注")
+    private String auditRemark;
+
     /** 证明材料文件 */
     @Excel(name = "证明材料文件")
     private String proofUrl;
@@ -46,6 +63,10 @@ public class FundUsageRecord extends BaseEntity
     /** 区块链交易哈希值 */
     @Excel(name = "区块链交易哈希值")
     private String transactionHash;
+    
+    /** 项目名称（非数据库字段） */
+    @Excel(name = "项目名称")
+    private String projectName;
 
     public void setUsageId(Long usageId) 
     {
@@ -96,6 +117,46 @@ public class FundUsageRecord extends BaseEntity
     {
         return usageTime;
     }
+    
+    public void setApplicationStatus(String applicationStatus)
+    {
+        this.applicationStatus = applicationStatus;
+    }
+
+    public String getApplicationStatus()
+    {
+        return applicationStatus;
+    }
+    
+    public void setAuditor(String auditor)
+    {
+        this.auditor = auditor;
+    }
+
+    public String getAuditor()
+    {
+        return auditor;
+    }
+    
+    public void setAuditTime(Date auditTime)
+    {
+        this.auditTime = auditTime;
+    }
+
+    public Date getAuditTime()
+    {
+        return auditTime;
+    }
+    
+    public void setAuditRemark(String auditRemark)
+    {
+        this.auditRemark = auditRemark;
+    }
+
+    public String getAuditRemark()
+    {
+        return auditRemark;
+    }
 
     public void setProofUrl(String proofUrl) 
     {
@@ -116,15 +177,30 @@ public class FundUsageRecord extends BaseEntity
     {
         return transactionHash;
     }
+    
+    public void setProjectName(String projectName)
+    {
+        this.projectName = projectName;
+    }
+
+    public String getProjectName()
+    {
+        return projectName;
+    }
 
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("usageId", getUsageId())
             .append("projectId", getProjectId())
+            .append("projectName", getProjectName())
             .append("amount", getAmount())
             .append("usageDesc", getUsageDesc())
             .append("usageTime", getUsageTime())
+            .append("applicationStatus", getApplicationStatus())
+            .append("auditor", getAuditor())
+            .append("auditTime", getAuditTime())
+            .append("auditRemark", getAuditRemark())
             .append("proofUrl", getProofUrl())
             .append("transactionHash", getTransactionHash())
             .append("createBy", getCreateBy())

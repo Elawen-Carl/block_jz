@@ -118,6 +118,7 @@
 
 <script setup name="Project">
 import { listProject, getProject, delProject, addProject, updateProject } from "@/api/charity/project";
+import { addDonation } from "@/api/charity/donation"; // 导入捐赠API
 import { isExternal } from "@/utils/validate";
 
 const { proxy } = getCurrentInstance();
@@ -164,7 +165,7 @@ const data = reactive({
     startTime: null,
     endTime: null,
     status: '1',  // 默认只显示进行中的项目
-    auditStatus: '1',  // 默认只显示审核通过的项目
+    auditStatus: '0',  // 默认只显示审核通过的项目
     auditTime: null,
     createTime: null,
   },
@@ -224,22 +225,11 @@ function getList() {
   }
   listProject(queryParams.value).then(response => {
     projectList.value = response.rows;
-    // 调试输出，检查数据格式
-    console.log("项目列表页数据:", projectList.value);
-    if (projectList.value && projectList.value.length > 0) {
-      console.log("第一个项目的审核状态:", projectList.value[0].auditStatus, "类型:", typeof projectList.value[0].auditStatus);
-      console.log("第一个项目的项目状态:", projectList.value[0].status, "类型:", typeof projectList.value[0].status);
-    }
     total.value = response.total;
     loading.value = false;
   });
 }
 
-// 取消按钮
-function cancel() {
-  open.value = false;
-  reset();
-}
 
 // 表单重置
 function reset() {
@@ -308,45 +298,6 @@ function handleUpdate(row) {
   });
 }
 
-/** 提交按钮 */
-function submitForm() {
-  proxy.$refs["projectRef"].validate(valid => {
-    if (valid) {
-      if (form.value.projectId != null) {
-        updateProject(form.value).then(response => {
-          proxy.$modal.msgSuccess("修改成功");
-          open.value = false;
-          getList();
-        });
-      } else {
-        addProject(form.value).then(response => {
-          proxy.$modal.msgSuccess("新增成功");
-          open.value = false;
-          getList();
-        });
-      }
-    }
-  });
-}
-
-/** 删除按钮操作 */
-function handleDelete(row) {
-  const _projectIds = row.projectId || ids.value;
-  proxy.$modal.confirm('是否确认删除慈善项目编号为"' + _projectIds + '"的数据项？').then(function () {
-    return delProject(_projectIds);
-  }).then(() => {
-    getList();
-    proxy.$modal.msgSuccess("删除成功");
-  }).catch(() => { });
-}
-
-/** 导出按钮操作 */
-function handleExport() {
-  proxy.download('charity/project/export', {
-    ...queryParams.value
-  }, `project_${new Date().getTime()}.xlsx`)
-}
-
 /** 查看项目详情 */
 function handleDetail(row) {
   getProject(row.projectId).then(response => {
@@ -371,11 +322,45 @@ function handleDonate(row) {
 function submitDonate() {
   proxy.$refs["donateRef"].validate(valid => {
     if (valid) {
-      // 这里应该调用捐赠API，暂时用弹窗模拟
-      proxy.$modal.msgSuccess(`您已成功为"${donateForm.value.projectName}"项目捐赠${donateForm.value.amount}元`);
-      donateOpen.value = false;
-      // 这里应该刷新项目列表
-      getList();
+      // 显示模拟支付确认框
+      proxy.$modal.confirm(`您将捐赠${donateForm.value.amount}元给"${donateForm.value.projectName}"项目，是否确认支付？`).then(() => {
+        // 模拟支付处理中...
+        const loadingInstance = proxy.$loading({
+          lock: true,
+          text: '支付处理中...',
+          spinner: 'el-icon-loading',
+          background: 'rgba(0, 0, 0, 0.7)'
+        });
+
+        // 构建捐赠数据
+        const donationData = {
+          projectId: donateForm.value.projectId,
+          donationAmount: donateForm.value.amount,
+          message: donateForm.value.message,
+          isAnonymous: donateForm.value.isAnonymous ? 1 : 0,
+          paymentMethod: 'online', // 默认在线支付
+          paymentStatus: '1' // 默认支付成功
+        };
+
+        // 延迟模拟支付过程
+        setTimeout(() => {
+          // 调用捐赠API
+          addDonation(donationData).then(response => {
+            loadingInstance.close();
+            proxy.$modal.msgSuccess(`捐赠成功！感谢您为"${donateForm.value.projectName}"项目捐赠${donateForm.value.amount}元`);
+            donateOpen.value = false;
+            // 刷新项目列表，显示更新后的筹集金额
+            getList();
+          }).catch(error => {
+            loadingInstance.close();
+            proxy.$modal.msgError('捐赠失败，请稍后再试');
+            console.error('捐赠失败:', error);
+          });
+        }, 1500); // 延迟1.5秒，模拟支付过程
+      }).catch(() => {
+        // 用户取消支付
+        proxy.$modal.msgInfo('您已取消捐赠');
+      });
     }
   });
 }

@@ -90,6 +90,19 @@ public class FundUsageRecordController extends BaseController
     {
         return toAjax(fundUsageRecordService.updateFundUsageRecord(fundUsageRecord));
     }
+    
+    /**
+     * 审核资金使用申请
+     */
+    @PreAuthorize("@ss.hasPermi('charity:fund:audit')")
+    @Log(title = "资金使用审核", businessType = BusinessType.UPDATE)
+    @PutMapping("/audit")
+    public AjaxResult audit(@RequestBody FundUsageRecord fundUsageRecord)
+    {
+        // 设置当前用户为审核人
+        fundUsageRecord.setAuditor(getUsername());
+        return toAjax(fundUsageRecordService.auditFundUsageRecord(fundUsageRecord));
+    }
 
     /**
      * 删除资金使用记录

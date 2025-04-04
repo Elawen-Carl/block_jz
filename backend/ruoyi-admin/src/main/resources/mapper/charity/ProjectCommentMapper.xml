@@ -7,28 +7,33 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="ProjectComment" id="ProjectCommentResult">
         <result property="commentId"    column="comment_id"    />
         <result property="projectId"    column="project_id"    />
+        <result property="projectName"    column="project_name"    />
         <result property="userId"    column="user_id"    />
+        <result property="userName"    column="user_name"    />
         <result property="content"    column="content"    />
         <result property="rating"    column="rating"    />
         <result property="createTime"    column="create_time"    />
     </resultMap>
 
     <sql id="selectProjectCommentVo">
-        select comment_id, project_id, user_id, content, rating, create_time from project_comment
+        select pc.comment_id, pc.project_id,p.project_name, pc.user_id, u.nick_name as user_name, pc.content, pc.rating, pc.create_time 
+        from project_comment pc
+        left join sys_user u on pc.user_id = u.user_id
+        left join charity_project p on pc.project_id = p.project_id
     </sql>
 
     <select id="selectProjectCommentList" parameterType="ProjectComment" resultMap="ProjectCommentResult">
         <include refid="selectProjectCommentVo"/>
         <where>  
-            <if test="projectId != null "> and project_id = #{projectId}</if>
-            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="projectName != null "> and p.project_name = #{projectName}</if>
+            <if test="userName != null "> and u.nick_name = #{userName}</if>
             <if test="params.beginCreateTime != null and params.beginCreateTime != '' and params.endCreateTime != null and params.endCreateTime != ''"> and create_time between #{params.beginCreateTime} and #{params.endCreateTime}</if>
         </where>
     </select>
     
     <select id="selectProjectCommentByCommentId" parameterType="Long" resultMap="ProjectCommentResult">
         <include refid="selectProjectCommentVo"/>
-        where comment_id = #{commentId}
+        where pc.comment_id = #{commentId}
     </select>
 
     <insert id="insertProjectComment" parameterType="ProjectComment" useGeneratedKeys="true" keyProperty="commentId">
