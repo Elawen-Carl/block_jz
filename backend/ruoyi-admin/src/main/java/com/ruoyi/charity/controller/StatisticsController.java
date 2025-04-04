@@ -1,5 +1,6 @@
 package com.ruoyi.charity.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +19,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
  * @date 2025-04-03
  */
 @RestController
+@Slf4j
 @RequestMapping("/charity/statistics")
 public class StatisticsController extends BaseController {
     
@@ -28,6 +30,7 @@ public class StatisticsController extends BaseController {
      * 获取总体统计数据
      */
     @GetMapping("/overall")
+
     public AjaxResult getOverallStatistics() {
         StatisticsDTO.OverallStatistics stats = statisticsService.getOverallStatistics();
         return AjaxResult.success(stats);

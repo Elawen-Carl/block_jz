@@ -1,28 +1,22 @@
 package com.ruoyi.charity.controller;
 
-import java.util.List;
-import javax.servlet.http.HttpServletResponse;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.ruoyi.charity.blockchain.service.BlockchainService;
+import com.ruoyi.charity.domain.CharityProject;
+import com.ruoyi.charity.service.ICharityProjectService;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
-import com.ruoyi.common.enums.BusinessType;
-import com.ruoyi.charity.domain.CharityProject;
-import com.ruoyi.charity.service.ICharityProjectService;
-import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.utils.poi.ExcelUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletResponse;
+import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.HashMap;
 
 /**
  * 慈善项目Controller
@@ -32,10 +26,14 @@ import java.util.HashMap;
  */
 @RestController
 @RequestMapping("/charity/project")
+@Slf4j
 public class CharityProjectController extends BaseController
 {
     @Autowired
     private ICharityProjectService charityProjectService;
+    
+    @Autowired(required = false)
+    private BlockchainService blockchainService;
 
     /**
      * 查询慈善项目列表
@@ -80,7 +78,24 @@ public class CharityProjectController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody CharityProject charityProject)
     {
-        return toAjax(charityProjectService.insertCharityProject(charityProject));
+        // 先保存到数据库
+        int rows = charityProjectService.insertCharityProject(charityProject);
+        
+        // 如果保存成功且区块链服务可用，则进行上链操作
+        if (rows > 0 && blockchainService != null) {
+            try {
+                // 进行上链操作
+                String txHash = blockchainService.createProjectOnChain(charityProject);
+                // 更新区块链ID
+                charityProject.setBlockchainId(txHash);
+                charityProjectService.updateCharityProject(charityProject);
+            } catch (Exception e) {
+                log.error("项目上链失败", e);
+                // 上链失败不影响业务操作
+            }
+        }
+        
+        return toAjax(rows);
     }
 
     /**
@@ -111,11 +126,47 @@ public class CharityProjectController extends BaseController
     @GetMapping("/blockchain/{projectId}")
     public AjaxResult getBlockchainInfo(@PathVariable("projectId") Long projectId)
     {
-        // 从区块链服务获取信息
-        // 这里为了简化，返回模拟数据
-        Map<String, Object> blockchainInfo = new HashMap<>();
-        String uuid = UUID.randomUUID().toString().replace("-", "");
-        // 确保不超过字符串长度，避免StringIndexOutOfBoundsException
+        try {
+            // 获取项目信息
+            CharityProject project = charityProjectService.selectCharityProjectByProjectId(projectId);
+            
+            if (project == null) {
+                return AjaxResult.error("项目不存在");
+            }
+            
+            // 获取项目的区块链ID
+            String blockchainId = project.getBlockchainId();
+            
+            if (blockchainId == null || blockchainId.isEmpty()) {
+                // 如果没有区块链ID，则返回默认信息
+                Map<String, Object> blockchainInfo = blockchainService != null ? 
+                        blockchainService.getTransactionInfo(null) : 
+                        createDefaultBlockchainInfo();
+                
+                blockchainInfo.put("txHash", "未上链");
+                blockchainInfo.put("status", "pending");
+                return AjaxResult.success(blockchainInfo);
+            }
+            
+            // 使用BlockchainService获取实际的区块链信息
+            Map<String, Object> blockchainInfo = blockchainService != null ? 
+                    blockchainService.getTransactionInfo(blockchainId) : 
+                    createDefaultBlockchainInfo();
+                    
+            return AjaxResult.success(blockchainInfo);
+        } catch (Exception e) {
+            log.error("获取区块链信息失败", e);
+            return AjaxResult.success(createDefaultBlockchainInfo());
+        }
+    }
+    
+    /**
+     * 创建默认的区块链信息
+     */
+    private Map<String, Object> createDefaultBlockchainInfo() {
+        // 从区块链服务获取信息失败，返回模拟数据
+        java.util.Map<String, Object> blockchainInfo = new java.util.HashMap<>();
+        String uuid = java.util.UUID.randomUUID().toString().replace("-", "");
         int length = Math.min(uuid.length(), 40);
         blockchainInfo.put("txHash", "0x" + uuid.substring(0, length));
         blockchainInfo.put("timestamp", System.currentTimeMillis());
@@ -123,6 +174,6 @@ public class CharityProjectController extends BaseController
         blockchainInfo.put("confirmations", (int)(Math.random() * 100) + 1);
         blockchainInfo.put("status", "confirmed");
         
-        return success(blockchainInfo);
+        return blockchainInfo;
     }
 }

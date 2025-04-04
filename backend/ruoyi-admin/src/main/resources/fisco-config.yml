@@ -1,0 +1,36 @@
+cryptoMaterial:
+  certPath: config/certs
+  useSMCrypto: false
+  # openssl CA cert
+  caCert: ca.crt
+  # user private key
+  sslKey: sdk.key
+  # user cert
+  sslCert: sdk.crt
+  # user specific ENnodes
+  enSslCert: sdk.crt
+  # user specific GM ennodes
+  gmEnSslCert: null
+  # gm ssl cert
+  gmSslCert: null
+  # gm ssl key
+  gmSslKey: null
+  # gm CA cert
+  gmCaCert: null
+  # gm SM2 encrypt Private Key
+  gmEnSslKey: null
+network:
+  peers:
+    # 节点地址，使用默认的本地节点，实际部署时需要修改
+    - 127.0.0.1:20200
+    - 127.0.0.1:20201
+amop:
+  # 心跳间隔（毫秒）
+  heartBeatInterval: 30000
+threadPool:
+  # 线程池大小
+  channelProcessorThreadSize: 16
+  # 接收线程池大小
+  receiptProcessorThreadSize: 16
+  # 最大等待线程数
+  maxBlockingQueueSize: 102400 
