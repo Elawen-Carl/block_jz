@@ -34,19 +34,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectDonationRecordList" parameterType="DonationRecord" resultMap="DonationRecordResult">
         <include refid="selectDonationRecordVo"/>
         <where>  
-            <if test="userId != null "> and user_id = #{userId}</if>
-            <if test="projectId != null "> and project_id = #{projectId}</if>
-            <if test="donationAmount != null "> and donation_amount = #{donationAmount}</if>
-            <if test="paymentMethod != null  and paymentMethod != ''"> and payment_method = #{paymentMethod}</if>
-            <if test="params.beginDonationTime != null and params.beginDonationTime != '' and params.endDonationTime != null and params.endDonationTime != ''"> and donation_time between #{params.beginDonationTime} and #{params.endDonationTime}</if>
-            <if test="status != null  and status != ''"> and status = #{status}</if>
-            <if test="params.beginCreateTime != null and params.beginCreateTime != '' and params.endCreateTime != null and params.endCreateTime != ''"> and create_time between #{params.beginCreateTime} and #{params.endCreateTime}</if>
+            <if test="userId != null "> and dr.user_id = #{userId}</if>
+            <if test="projectId != null "> and dr.project_id = #{projectId}</if>
+            <if test="donationAmount != null "> and dr.donation_amount = #{donationAmount}</if>
+            <if test="paymentMethod != null  and paymentMethod != ''"> and dr.payment_method = #{paymentMethod}</if>
+            <if test="params.beginDonationTime != null and params.beginDonationTime != '' and params.endDonationTime != null and params.endDonationTime != ''"> and dr.donation_time between #{params.beginDonationTime} and #{params.endDonationTime}</if>
+            <if test="status != null  and status != ''"> and dr.status = #{status}</if>
+            <if test="params.beginCreateTime != null and params.beginCreateTime != '' and params.endCreateTime != null and params.endCreateTime != ''"> and dr.create_time between #{params.beginCreateTime} and #{params.endCreateTime}</if>
         </where>
     </select>
     
     <select id="selectDonationRecordByDonationId" parameterType="Long" resultMap="DonationRecordResult">
         <include refid="selectDonationRecordVo"/>
-        where donation_id = #{donationId}
+        where dr.donation_id = #{donationId}
     </select>
 
     <insert id="insertDonationRecord" parameterType="DonationRecord" useGeneratedKeys="true" keyProperty="donationId">

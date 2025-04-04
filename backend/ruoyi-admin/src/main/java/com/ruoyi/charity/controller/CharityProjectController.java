@@ -20,6 +20,9 @@ import com.ruoyi.charity.domain.CharityProject;
 import com.ruoyi.charity.service.ICharityProjectService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
+import java.util.Map;
+import java.util.UUID;
+import java.util.HashMap;
 
 /**
  * 慈善项目Controller
@@ -100,5 +103,26 @@ public class CharityProjectController extends BaseController
     public AjaxResult remove(@PathVariable Long[] projectIds)
     {
         return toAjax(charityProjectService.deleteCharityProjectByProjectIds(projectIds));
+    }
+    
+    /**
+     * 获取项目区块链信息
+     */
+    @GetMapping("/blockchain/{projectId}")
+    public AjaxResult getBlockchainInfo(@PathVariable("projectId") Long projectId)
+    {
+        // 从区块链服务获取信息
+        // 这里为了简化，返回模拟数据
+        Map<String, Object> blockchainInfo = new HashMap<>();
+        String uuid = UUID.randomUUID().toString().replace("-", "");
+        // 确保不超过字符串长度，避免StringIndexOutOfBoundsException
+        int length = Math.min(uuid.length(), 40);
+        blockchainInfo.put("txHash", "0x" + uuid.substring(0, length));
+        blockchainInfo.put("timestamp", System.currentTimeMillis());
+        blockchainInfo.put("blockNumber", (int)(Math.random() * 10000000) + 1000000);
+        blockchainInfo.put("confirmations", (int)(Math.random() * 100) + 1);
+        blockchainInfo.put("status", "confirmed");
+        
+        return success(blockchainInfo);
     }
 }

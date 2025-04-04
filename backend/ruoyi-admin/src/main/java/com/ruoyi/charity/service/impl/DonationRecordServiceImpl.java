@@ -1,12 +1,15 @@
 package com.ruoyi.charity.service.impl;
 
 import com.ruoyi.charity.domain.DonationRecord;
+import com.ruoyi.charity.domain.CharityProject;
 import com.ruoyi.charity.mapper.DonationRecordMapper;
+import com.ruoyi.charity.mapper.CharityProjectMapper;
 import com.ruoyi.charity.service.IDonationRecordService;
 import com.ruoyi.common.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -20,6 +23,9 @@ public class DonationRecordServiceImpl implements IDonationRecordService
 {
     @Autowired
     private DonationRecordMapper donationRecordMapper;
+
+    @Autowired
+    private CharityProjectMapper charityProjectMapper;
 
     /**
      * 查询捐赠记录
@@ -56,6 +62,19 @@ public class DonationRecordServiceImpl implements IDonationRecordService
     {
         donationRecord.setCreateTime(DateUtils.getNowDate());
         donationRecord.setDonationTime(DateUtils.getNowDate());
+        
+        // 更新项目已筹金额
+        if (donationRecord.getProjectId() != null && donationRecord.getDonationAmount() != null) {
+            // 查询当前项目
+            CharityProject project = charityProjectMapper.selectCharityProjectByProjectId(donationRecord.getProjectId());
+            if (project != null) {
+                // 更新项目已筹金额
+                BigDecimal newAmount = project.getCurrentAmount().add(donationRecord.getDonationAmount());
+                project.setCurrentAmount(newAmount);
+                charityProjectMapper.updateCharityProject(project);
+            }
+        }
+        
         return donationRecordMapper.insertDonationRecord(donationRecord);
     }
 

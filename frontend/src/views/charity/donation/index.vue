@@ -14,7 +14,7 @@
         <el-date-picker v-model="daterangeDonationTime" value-format="YYYY-MM-DD" type="daterange" range-separator="-"
           start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
       </el-form-item>
-      <el-form-item label="捐赠状态" prop="status">
+      <el-form-item label="捐赠状态" prop="status" style="width: 308px">
         <el-select v-model="queryParams.status" placeholder="请选择捐赠状态" clearable>
           <el-option v-for="dict in donation_status" :key="dict.value" :label="dict.label" :value="dict.value" />
         </el-select>
@@ -30,18 +30,6 @@
     </el-form>
 
     <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button type="primary" plain icon="Plus" @click="handleAdd"
-          v-hasPermi="['charity:donation:add']">新增</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate"
-          v-hasPermi="['charity:donation:edit']">修改</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete"
-          v-hasPermi="['charity:donation:remove']">删除</el-button>
-      </el-col>
       <el-col :span="1.5">
         <el-button type="warning" plain icon="Download" @click="handleExport"
           v-hasPermi="['charity:donation:export']">导出</el-button>
@@ -66,24 +54,9 @@
           <dict-tag :options="donation_status" :value="scope.row.status" />
         </template>
       </el-table-column>
-      <el-table-column label="区块链交易哈希值" align="center" prop="transactionHash" />
-      <el-table-column label="捐赠证书链接" align="center" prop="certificateUrl" />
-      <el-table-column label="证书颁发日期" align="center" prop="certificateIssueDate" width="180">
-        <template #default="scope">
-          <span>{{ parseTime(scope.row.certificateIssueDate, '{y}-{m}-{d}') }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="创建时间" align="center" prop="createTime" width="180">
-        <template #default="scope">
-          <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d}') }}</span>
-        </template>
-      </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)"
-            v-hasPermi="['charity:donation:edit']">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)"
-            v-hasPermi="['charity:donation:remove']">删除</el-button>
+          <el-button link type="primary" icon="View" @click="handleView(scope.row)">查看</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -91,48 +64,38 @@
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum"
       v-model:limit="queryParams.pageSize" @pagination="getList" />
 
-    <!-- 添加或修改捐赠记录对话框 -->
-    <el-dialog :title="title" v-model="open" width="500px" append-to-body>
-      <el-form ref="donationRef" :model="form" :rules="rules" label-width="80px">
-        <el-form-item label="用户编号" prop="userId">
-          <el-input v-model="form.userId" placeholder="请输入用户编号" />
-        </el-form-item>
-        <el-form-item label="项目编号" prop="projectId">
-          <el-input v-model="form.projectId" placeholder="请输入项目编号" />
-        </el-form-item>
-        <el-form-item label="捐赠金额" prop="donationAmount">
-          <el-input v-model="form.donationAmount" placeholder="请输入捐赠金额" />
-        </el-form-item>
-        <el-form-item label="捐赠时间" prop="donationTime">
-          <el-date-picker clearable v-model="form.donationTime" type="date" value-format="YYYY-MM-DD"
-            placeholder="请选择捐赠时间">
-          </el-date-picker>
-        </el-form-item>
-        <el-form-item label="捐赠状态" prop="status">
-          <el-select v-model="form.status" placeholder="请选择捐赠状态">
-            <el-option v-for="dict in donation_status" :key="dict.value" :label="dict.label"
-              :value="dict.value"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="区块链交易哈希值" prop="transactionHash">
-          <el-input v-model="form.transactionHash" placeholder="请输入区块链交易哈希值" />
-        </el-form-item>
-        <el-form-item label="捐赠证书链接" prop="certificateUrl">
-          <el-input v-model="form.certificateUrl" placeholder="请输入捐赠证书链接" />
-        </el-form-item>
-        <el-form-item label="证书颁发日期" prop="certificateIssueDate">
-          <el-date-picker clearable v-model="form.certificateIssueDate" type="date" value-format="YYYY-MM-DD"
-            placeholder="请选择证书颁发日期">
-          </el-date-picker>
-        </el-form-item>
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
-        </el-form-item>
-      </el-form>
+    <!-- 查看捐赠记录详情对话框 -->
+    <el-dialog title="捐赠记录详情" v-model="open" width="700px" append-to-body>
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="捐赠编号">{{ form.donationId }}</el-descriptions-item>
+        <el-descriptions-item label="用户名称">{{ form.userName }}</el-descriptions-item>
+        <el-descriptions-item label="项目名称">{{ form.projectName }}</el-descriptions-item>
+        <el-descriptions-item label="捐赠金额">{{ form.donationAmount }}元</el-descriptions-item>
+        <el-descriptions-item label="支付方式">
+          <span v-if="form.paymentMethod === 'online'">在线支付</span>
+          <span v-else-if="form.paymentMethod === 'offline'">线下捐赠</span>
+          <span v-else>{{ form.paymentMethod }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="捐赠时间">{{ parseTime(form.donationTime, '{y}-{m}-{d}') }}</el-descriptions-item>
+        <el-descriptions-item label="捐赠状态">
+          <dict-tag :options="donation_status" :value="form.status" />
+        </el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ parseTime(form.createTime, '{y}-{m}-{d} {h}:{i}:{s}')
+          }}</el-descriptions-item>
+        <el-descriptions-item label="区块链交易" :span="2" v-if="form.transactionHash">
+          <p>交易哈希: {{ form.transactionHash }}</p>
+        </el-descriptions-item>
+        <el-descriptions-item label="捐赠证书" :span="2" v-if="form.certificateUrl">
+          <div>
+            <el-link type="primary" :href="form.certificateUrl" target="_blank">查看证书</el-link>
+            <p v-if="form.certificateIssueDate">颁发日期: {{ parseTime(form.certificateIssueDate, '{y}-{m}-{d}') }}</p>
+          </div>
+        </el-descriptions-item>
+        <el-descriptions-item label="捐赠留言" :span="2" v-if="form.remark">{{ form.remark }}</el-descriptions-item>
+      </el-descriptions>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
+          <el-button @click="open = false">关闭</el-button>
         </div>
       </template>
     </el-dialog>
@@ -140,7 +103,7 @@
 </template>
 
 <script setup name="Donation">
-import { listDonation, getDonation, delDonation, addDonation, updateDonation } from "@/api/charity/donation";
+import { listDonation } from "@/api/charity/donation";
 
 const { proxy } = getCurrentInstance();
 const { donation_status } = proxy.useDict('donation_status');
@@ -153,7 +116,6 @@ const ids = ref([]);
 const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
-const title = ref("");
 const daterangeDonationTime = ref([]);
 const daterangeCertificateIssueDate = ref([]);
 const daterangeCreateTime = ref([]);
@@ -269,54 +231,11 @@ function handleSelectionChange(selection) {
   multiple.value = !selection.length;
 }
 
-/** 新增按钮操作 */
-function handleAdd() {
+/** 查看按钮操作 */
+function handleView(row) {
   reset();
+  form.value = row;
   open.value = true;
-  title.value = "添加捐赠记录";
-}
-
-/** 修改按钮操作 */
-function handleUpdate(row) {
-  reset();
-  const _donationId = row.donationId || ids.value
-  getDonation(_donationId).then(response => {
-    form.value = response.data;
-    open.value = true;
-    title.value = "修改捐赠记录";
-  });
-}
-
-/** 提交按钮 */
-function submitForm() {
-  proxy.$refs["donationRef"].validate(valid => {
-    if (valid) {
-      if (form.value.donationId != null) {
-        updateDonation(form.value).then(response => {
-          proxy.$modal.msgSuccess("修改成功");
-          open.value = false;
-          getList();
-        });
-      } else {
-        addDonation(form.value).then(response => {
-          proxy.$modal.msgSuccess("新增成功");
-          open.value = false;
-          getList();
-        });
-      }
-    }
-  });
-}
-
-/** 删除按钮操作 */
-function handleDelete(row) {
-  const _donationIds = row.donationId || ids.value;
-  proxy.$modal.confirm('是否确认删除捐赠记录编号为"' + _donationIds + '"的数据项？').then(function () {
-    return delDonation(_donationIds);
-  }).then(() => {
-    getList();
-    proxy.$modal.msgSuccess("删除成功");
-  }).catch(() => { });
 }
 
 /** 导出按钮操作 */

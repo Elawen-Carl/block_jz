@@ -77,6 +77,10 @@ public class ProjectCommentController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody ProjectComment projectComment)
     {
+        // 设置当前用户ID
+        if (projectComment.getUserId() == null) {
+            projectComment.setUserId(getUserId());
+        }
         return toAjax(projectCommentService.insertProjectComment(projectComment));
     }
 

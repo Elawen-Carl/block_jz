@@ -62,6 +62,8 @@
         <el-table-column label="操作" align="center" width="150">
           <template #default="scope">
             <el-button link type="primary" icon="View" @click="handleView(scope.row)">查看详情</el-button>
+            <el-button v-if="scope.row.status === '1'" link type="success" icon="Comment"
+              @click="handleAddComment(scope.row)">评价</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -159,11 +161,34 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 评价对话框 -->
+    <el-dialog title="项目评价" v-model="commentOpen" width="500px" append-to-body>
+      <el-form ref="commentRef" :model="commentForm" :rules="commentRules" label-width="80px">
+        <el-form-item label="项目名称">
+          <span>{{ commentForm.projectName }}</span>
+        </el-form-item>
+        <el-form-item label="评分" prop="rating">
+          <el-rate :model-value="commentForm.rating" @update:model-value="commentForm.rating = $event"
+            :texts="ratingTexts" show-text />
+        </el-form-item>
+        <el-form-item label="评价内容" prop="content">
+          <el-input v-model="commentForm.content" type="textarea" :rows="4" placeholder="请输入您对该项目的评价或反馈意见..." />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitComment">提交评价</el-button>
+          <el-button @click="commentOpen = false">取消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="MyDonation">
 import { listDonation, getDonation, updateDonation } from "@/api/charity/donation";
+import { listComment, addComment } from "@/api/charity/comment";
 import useUserStore from '@/store/modules/user';
 import { isExternal } from "@/utils/validate";
 import html2canvas from 'html2canvas';
@@ -175,6 +200,7 @@ const userStore = useUserStore();
 const donationList = ref([]);
 const viewOpen = ref(false);
 const certificateOpen = ref(false);
+const commentOpen = ref(false);
 const loading = ref(true);
 const showSearch = ref(true);
 const total = ref(0);
@@ -191,6 +217,21 @@ const certificateData = reactive({
   donationTime: null,
   issueDate: null
 });
+
+// 评价表单
+const commentRef = ref(null);
+const commentForm = ref({
+  projectId: null,
+  projectName: '',
+  donationId: null,
+  rating: 5,
+  content: ''
+});
+const commentRules = {
+  rating: [{ required: true, message: "请对项目进行评分", trigger: "change" }],
+  content: [{ required: true, message: "请输入评价内容", trigger: "blur" }]
+};
+const ratingTexts = ["很差", "较差", "一般", "较好", "很好"];
 
 const data = reactive({
   form: {},
@@ -220,8 +261,38 @@ function getList() {
 
   listDonation(queryParams.value).then(response => {
     donationList.value = response.rows;
+    // 检查每条记录是否已有评价
+    checkDonationComments();
     total.value = response.total;
     loading.value = false;
+  });
+}
+
+/** 检查捐赠记录是否已有评价 */
+function checkDonationComments() {
+  // 获取所有项目ID
+  const projectIds = donationList.value.map(item => item.projectId);
+
+  if (projectIds.length === 0) return;
+
+  // 查询用户对这些项目的评价
+  listComment({
+    userId: userStore.userId,
+    projectIds: projectIds.join(',')
+  }).then(response => {
+    const comments = response.rows || [];
+    // 建立项目ID到评价的映射
+    const commentMap = {};
+    comments.forEach(comment => {
+      commentMap[comment.projectId] = true;
+    });
+
+    // 更新捐赠记录的评价状态
+    donationList.value.forEach(donation => {
+      donation.hasComment = commentMap[donation.projectId] || false;
+    });
+  }).catch(error => {
+    console.error("获取评价记录失败", error);
   });
 }
 
@@ -330,6 +401,44 @@ function viewBlockchainInfo(hash) {
   proxy.$modal.msgInfo(`区块链交易哈希: ${hash}`);
   // 实际项目中可能会跳转到区块链浏览器
   // window.open(`https://example-blockchain-explorer.com/tx/${hash}`, '_blank');
+}
+
+/** 添加评价 */
+function handleAddComment(row) {
+  commentForm.value = {
+    projectId: row.projectId,
+    projectName: row.projectName,
+    donationId: row.donationId,
+    rating: 5,
+    content: ''
+  };
+  commentOpen.value = true;
+}
+
+/** 提交评价 */
+function submitComment() {
+  commentRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        // 确保包含用户ID
+        const commentData = {
+          projectId: commentForm.value.projectId,
+          userId: userStore.id,
+          rating: commentForm.value.rating,
+          content: commentForm.value.content
+        };
+
+        await addComment(commentData);
+        proxy.$modal.msgSuccess("评价提交成功");
+        commentOpen.value = false;
+        // 刷新列表
+        getList();
+      } catch (error) {
+        console.error("提交评价失败", error);
+        proxy.$modal.msgError("评价提交失败，请重试");
+      }
+    }
+  });
 }
 
 getList();

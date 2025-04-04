@@ -42,3 +42,19 @@ export function delProject(projectId) {
     method: 'delete'
   })
 }
+
+// 获取项目详情（包含更多信息）
+export function getProjectDetail(projectId) {
+  return request({
+    url: '/charity/project/' + projectId,
+    method: 'get'
+  })
+}
+
+// 获取项目区块链信息
+export function getProjectBlockchainInfo(projectId) {
+  return request({
+    url: '/charity/project/blockchain/' + projectId,
+    method: 'get'
+  })
+}

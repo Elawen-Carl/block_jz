@@ -77,6 +77,10 @@ public class DonationRecordController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody DonationRecord donationRecord)
     {
+        // 如果没有提供用户ID，则使用当前登录用户的ID
+        if (donationRecord.getUserId() == null) {
+            donationRecord.setUserId(getUserId());
+        }
         return toAjax(donationRecordService.insertDonationRecord(donationRecord));
     }
 

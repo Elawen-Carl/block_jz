@@ -79,6 +79,65 @@
           <el-image :src="getImageUrl(projectDetail.coverImage)" style="max-width: 300px;" />
         </el-descriptions-item>
       </el-descriptions>
+
+      <!-- 区块链信息 -->
+      <div v-if="blockchainInfo.txHash" class="blockchain-info">
+        <h3><el-icon>
+            <Link />
+          </el-icon> 区块链信息</h3>
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="交易哈希">{{ blockchainInfo.txHash }}</el-descriptions-item>
+          <el-descriptions-item label="时间戳">{{ parseTime(blockchainInfo.timestamp) }}</el-descriptions-item>
+          <el-descriptions-item label="区块号" v-if="blockchainInfo.blockNumber">{{ blockchainInfo.blockNumber
+          }}</el-descriptions-item>
+          <el-descriptions-item label="确认数" v-if="blockchainInfo.confirmations">{{ blockchainInfo.confirmations
+          }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ blockchainInfo.status }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <!-- 项目评价列表 -->
+      <div class="project-comments">
+        <div class="comments-header">
+          <h3><el-icon>
+              <ChatDotRound />
+            </el-icon> 项目评价 <el-tag size="small" type="info" effect="plain">{{
+              projectComments.length }}条</el-tag></h3>
+          <el-button v-if="hasDonated" type="primary" size="small" @click="handleAddComment">
+            <el-icon>
+              <Edit />
+            </el-icon> 我要评价
+          </el-button>
+        </div>
+
+        <el-empty v-if="projectComments.length === 0" description="暂无评价" />
+
+        <div v-else class="comment-list">
+          <div v-for="(comment, index) in projectComments" :key="index" class="comment-item">
+            <div class="comment-header">
+              <div class="user-info">
+                <el-avatar :size="40" :src="comment.avatar || defaultAvatar">
+                  {{ comment.userName ? comment.userName.substring(0, 1) : 'U' }}
+                </el-avatar>
+                <div class="user-details">
+                  <span class="username">{{ comment.userName || '匿名用户' }}</span>
+                  <span class="time-mobile">{{ parseTime(comment.createTime, '{y}-{m}-{d}') }}</span>
+                </div>
+              </div>
+              <div class="rating">
+                <el-rate :model-value="comment.rating" disabled text-color="#ff9900" />
+                <span class="time">{{ parseTime(comment.createTime, '{y}-{m}-{d}') }}</span>
+              </div>
+            </div>
+            <div class="comment-content">
+              {{ comment.content }}
+            </div>
+          </div>
+        </div>
+
+
+      </div>
+
       <template #footer>
         <div class="dialog-footer">
           <el-button type="primary" @click="handleDonate(projectDetail)"
@@ -113,16 +172,42 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 添加评价对话框 -->
+    <el-dialog title="项目评价" v-model="commentOpen" width="500px" append-to-body>
+      <el-form ref="commentRef" :model="commentForm" :rules="commentRules" label-width="80px">
+        <el-form-item label="项目名称">
+          <span>{{ projectDetail.projectName }}</span>
+        </el-form-item>
+        <el-form-item label="评分" prop="rating">
+          <el-rate v-model="commentForm.rating" :texts="ratingTexts" show-text />
+        </el-form-item>
+        <el-form-item label="评价内容" prop="content">
+          <el-input v-model="commentForm.content" type="textarea" :rows="4" placeholder="请输入您对该项目的评价或反馈意见..." />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitComment">提交评价</el-button>
+          <el-button @click="commentOpen = false">取消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="Project">
-import { listProject, getProject, delProject, addProject, updateProject } from "@/api/charity/project";
+import { listProject, getProject, delProject, addProject, updateProject, getProjectDetail, getProjectBlockchainInfo } from "@/api/charity/project";
 import { addDonation } from "@/api/charity/donation"; // 导入捐赠API
 import { isExternal } from "@/utils/validate";
+import useUserStore from '@/store/modules/user';
+import { listComment, addComment } from "@/api/charity/comment";
+import { listDonation } from "@/api/charity/donation";
+import { Link, ChatDotRound, Edit } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance();
 const { charity_project_audit_status, charity_initiator_type, charity_project_status } = proxy.useDict('charity_project_audit_status', 'charity_initiator_type', 'charity_project_status');
+const userStore = useUserStore();
 
 const projectList = ref([]);
 const open = ref(false);
@@ -140,6 +225,7 @@ const daterangeCreateTime = ref([]);
 const detailOpen = ref(false);
 const donateOpen = ref(false);
 const projectDetail = ref({});
+const blockchainInfo = ref({});
 const donateForm = ref({
   projectId: null,
   projectName: '',
@@ -153,6 +239,23 @@ const donateRules = {
     { type: 'number', min: 1, message: '捐赠金额最小为1元', trigger: 'blur' }
   ]
 };
+
+// 评价相关变量
+const commentOpen = ref(false);
+const projectComments = ref([]);
+const commentRef = ref(null);
+const commentForm = ref({
+  projectId: null,
+  rating: 5,
+  content: ""
+});
+const commentRules = {
+  rating: [{ required: true, message: "请对项目进行评分", trigger: "change" }],
+  content: [{ required: true, message: "请输入评价内容", trigger: "blur" }]
+};
+const ratingTexts = ["很差", "较差", "一般", "较好", "很好"];
+const defaultAvatar = "https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png";
+const hasDonated = ref(false);
 
 const data = reactive({
   form: {},
@@ -299,10 +402,97 @@ function handleUpdate(row) {
 }
 
 /** 查看项目详情 */
-function handleDetail(row) {
-  getProject(row.projectId).then(response => {
-    projectDetail.value = response.data;
+async function handleDetail(row) {
+  const projectId = row.projectId || row;
+  try {
     detailOpen.value = true;
+    // 获取项目详情 - 使用现有的getProject函数替代getProjectDetail，因为它们指向同一个接口
+    const res = await getProject(projectId);
+    projectDetail.value = res.data;
+
+    // 尝试获取项目区块链信息，但如果失败则提供默认值
+    try {
+      const blockchainRes = await getProjectBlockchainInfo(projectId);
+      blockchainInfo.value = blockchainRes.data || {
+        txHash: '暂无区块链信息',
+        timestamp: new Date().getTime(),
+        status: '未上链'
+      };
+    } catch (error) {
+      console.error("获取区块链信息失败", error);
+      blockchainInfo.value = {
+        txHash: '暂无区块链信息',
+        timestamp: new Date().getTime(),
+        status: '未上链'
+      };
+    }
+
+    // 获取项目评价列表
+    getProjectComments(projectId);
+
+    // 检查当前用户是否已捐赠该项目
+    checkUserDonation(projectId);
+  } catch (error) {
+    console.error("获取项目详情失败", error);
+    proxy.$modal.msgError("获取项目详情失败，请稍后再试");
+  }
+}
+
+/** 获取项目评价列表 */
+async function getProjectComments(projectId) {
+  try {
+    const res = await listComment({ projectId: projectId });
+    projectComments.value = res.rows || [];
+  } catch (error) {
+    console.error("获取项目评价失败", error);
+    projectComments.value = [];
+  }
+}
+
+/** 检查用户是否已捐赠过该项目 */
+async function checkUserDonation(projectId) {
+  try {
+    const res = await listDonation({ projectId: projectId, userId: userStore.userId });
+    hasDonated.value = res.rows && res.rows.length > 0;
+  } catch (error) {
+    console.error("检查用户捐赠记录失败", error);
+    hasDonated.value = false;
+  }
+}
+
+/** 处理添加评价 */
+function handleAddComment() {
+  commentForm.value = {
+    projectId: projectDetail.value.projectId,
+    rating: 5,
+    content: ""
+  };
+  commentOpen.value = true;
+}
+
+/** 提交评价 */
+function submitComment() {
+  commentRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        // 确保包含用户ID
+        const commentData = {
+          projectId: commentForm.value.projectId,
+          userId: userStore.id,
+          rating: commentForm.value.rating,
+          content: commentForm.value.content
+        };
+
+        await addComment(commentData);
+        proxy.$modal.msgSuccess("评价提交成功");
+        commentOpen.value = false;
+        // 刷新评价列表
+        getProjectComments(projectDetail.value.projectId);
+      } catch (error) {
+        console.error("提交评价失败", error);
+        proxy.$modal.msgError("评价提交失败，请重试");
+      }
+    }
   });
 }
 
@@ -332,15 +522,22 @@ function submitDonate() {
           background: 'rgba(0, 0, 0, 0.7)'
         });
 
+        // 输出用户ID用于调试
+        console.log("当前用户ID:", userStore.userId);
+
         // 构建捐赠数据
         const donationData = {
           projectId: donateForm.value.projectId,
+          userId: userStore.userId, // 使用userStore.userId获取用户ID
           donationAmount: donateForm.value.amount,
-          message: donateForm.value.message,
+          remark: donateForm.value.message, // 使用remark字段存储留言
           isAnonymous: donateForm.value.isAnonymous ? 1 : 0,
           paymentMethod: 'online', // 默认在线支付
-          paymentStatus: '1' // 默认支付成功
+          status: '1' // 默认支付成功
         };
+
+        // 输出整个捐赠数据对象用于调试
+        console.log("捐赠数据:", donationData);
 
         // 延迟模拟支付过程
         setTimeout(() => {
@@ -435,5 +632,177 @@ getList();
 .card-actions {
   display: flex;
   justify-content: space-between;
+}
+
+/* 项目评价样式 */
+.project-comments {
+  margin-top: 25px;
+  border-top: 1px solid #ebeef5;
+  padding-top: 20px;
+}
+
+/* 区块链信息样式 */
+.blockchain-info {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border-left: 4px solid #409EFF;
+}
+
+.blockchain-info h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #409EFF;
+  display: flex;
+  align-items: center;
+}
+
+.blockchain-info h3 i {
+  margin-right: 5px;
+}
+
+.comments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.comments-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #303133;
+  display: flex;
+  align-items: center;
+}
+
+.comments-header h3 i {
+  margin-right: 5px;
+  color: #409EFF;
+}
+
+.comments-header h3 .el-tag {
+  margin-left: 8px;
+}
+
+.comment-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.comment-item {
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background-color: #fafafa;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.comment-item:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.comment-item:before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom, #409EFF, #67C23A);
+  opacity: 0.7;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  margin-left: 10px;
+}
+
+.username {
+  font-weight: 600;
+  color: #606266;
+  font-size: 14px;
+}
+
+.time-mobile {
+  font-size: 12px;
+  color: #909399;
+  display: none;
+}
+
+.rating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.rating .time {
+  margin-top: 5px;
+  margin-bottom: 0;
+  font-size: 12px;
+  color: #909399;
+}
+
+.comment-content {
+  color: #606266;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 5px 0;
+  border-top: 1px dashed #ebeef5;
+  padding-top: 12px;
+}
+
+.comment-footer {
+  padding: 10px 0;
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .comment-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rating {
+    align-items: flex-start;
+    margin-top: 10px;
+  }
+
+  .rating .time {
+    display: none;
+  }
+
+  .time-mobile {
+    display: block;
+    margin-top: 4px;
+  }
+}
+
+.mt-4 {
+  margin-top: 1rem;
 }
 </style>
