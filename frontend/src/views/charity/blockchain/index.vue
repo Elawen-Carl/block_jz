@@ -73,7 +73,7 @@
 
 
     <!-- 查看区块链交易详细信息对话框 -->
-    <el-dialog title="区块链交易详情" v-model="detailOpen" width="700px" append-to-body>
+    <el-dialog title="区块链交易详情" v-model="detailOpen" width="1000px" append-to-body>
       <el-descriptions :column="2" border>
         <el-descriptions-item label="交易编号">{{ detail.txId }}</el-descriptions-item>
         <el-descriptions-item label="关联业务">

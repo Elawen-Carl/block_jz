@@ -6,8 +6,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     
     <resultMap type="BlockchainTransaction" id="BlockchainTransactionResult">
         <result property="txId"    column="tx_id"    />
+        <result property="transactionHash"    column="transaction_hash"    />
         <result property="relatedId"    column="related_id"    />
         <result property="relatedType"    column="related_type"    />
+        <result property="blockNumber"    column="block_number"    />
         <result property="txData"    column="tx_data"    />
         <result property="txTime"    column="tx_time"    />
         <result property="txStatus"    column="tx_status"    />
@@ -15,15 +17,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectBlockchainTransactionVo">
-        select tx_id, related_id, related_type, tx_data, tx_time, tx_status, create_time from blockchain_transaction
+        select tx_id, transaction_hash, related_id, related_type, block_number, tx_data, tx_time, tx_status, create_time from blockchain_transaction
     </sql>
 
     <select id="selectBlockchainTransactionList" parameterType="BlockchainTransaction" resultMap="BlockchainTransactionResult">
         <include refid="selectBlockchainTransactionVo"/>
         <where>  
             <if test="txId != null  and txId != ''"> and tx_id = #{txId}</if>
+            <if test="transactionHash != null  and transactionHash != ''"> and transaction_hash = #{transactionHash}</if>
             <if test="relatedId != null "> and related_id = #{relatedId}</if>
             <if test="relatedType != null  and relatedType != ''"> and related_type = #{relatedType}</if>
+            <if test="blockNumber != null"> and block_number = #{blockNumber}</if>
             <if test="params.beginTxTime != null and params.beginTxTime != '' and params.endTxTime != null and params.endTxTime != ''"> and tx_time between #{params.beginTxTime} and #{params.endTxTime}</if>
             <if test="txStatus != null  and txStatus != ''"> and tx_status = #{txStatus}</if>
             <if test="params.beginCreateTime != null and params.beginCreateTime != '' and params.endCreateTime != null and params.endCreateTime != ''"> and create_time between #{params.beginCreateTime} and #{params.endCreateTime}</if>
@@ -39,8 +43,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         insert into blockchain_transaction
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="txId != null and txId != ''">tx_id,</if>
+            <if test="transactionHash != null and transactionHash != ''">transaction_hash,</if>
             <if test="relatedId != null">related_id,</if>
             <if test="relatedType != null and relatedType != ''">related_type,</if>
+            <if test="blockNumber != null">block_number,</if>
             <if test="txData != null and txData != ''">tx_data,</if>
             <if test="txTime != null">tx_time,</if>
             <if test="txStatus != null and txStatus != ''">tx_status,</if>
@@ -48,8 +54,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="txId != null and txId != ''">#{txId},</if>
+            <if test="transactionHash != null and transactionHash != ''">#{transactionHash},</if>
             <if test="relatedId != null">#{relatedId},</if>
             <if test="relatedType != null and relatedType != ''">#{relatedType},</if>
+            <if test="blockNumber != null">#{blockNumber},</if>
             <if test="txData != null and txData != ''">#{txData},</if>
             <if test="txTime != null">#{txTime},</if>
             <if test="txStatus != null and txStatus != ''">#{txStatus},</if>
@@ -60,8 +68,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="updateBlockchainTransaction" parameterType="BlockchainTransaction">
         update blockchain_transaction
         <trim prefix="SET" suffixOverrides=",">
+            <if test="transactionHash != null and transactionHash != ''">transaction_hash = #{transactionHash},</if>
             <if test="relatedId != null">related_id = #{relatedId},</if>
             <if test="relatedType != null and relatedType != ''">related_type = #{relatedType},</if>
+            <if test="blockNumber != null">block_number = #{blockNumber},</if>
             <if test="txData != null and txData != ''">tx_data = #{txData},</if>
             <if test="txTime != null">tx_time = #{txTime},</if>
             <if test="txStatus != null and txStatus != ''">tx_status = #{txStatus},</if>

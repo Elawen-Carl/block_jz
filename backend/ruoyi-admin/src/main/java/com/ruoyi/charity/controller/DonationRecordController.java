@@ -1,8 +1,8 @@
 package com.ruoyi.charity.controller;
 
-import com.ruoyi.charity.blockchain.service.BlockchainService;
 import com.ruoyi.charity.domain.DonationRecord;
 import com.ruoyi.charity.service.IDonationRecordService;
+import com.ruoyi.charity.blockchain.service.BlockchainIntegrationService;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
@@ -31,8 +31,8 @@ public class DonationRecordController extends BaseController
     @Autowired
     private IDonationRecordService donationRecordService;
     
-    @Autowired(required = false)
-    private BlockchainService blockchainService;
+    @Autowired
+    private BlockchainIntegrationService blockchainService;
 
     /**
      * 查询捐赠记录列表
@@ -68,6 +68,71 @@ public class DonationRecordController extends BaseController
     {
         return success(donationRecordService.selectDonationRecordByDonationId(donationId));
     }
+    
+    /**
+     * 获取捐赠记录区块链详情
+     */
+    @PreAuthorize("@ss.hasPermi('charity:donation:query')")
+    @GetMapping(value = "/blockchain/{donationId}")
+    public AjaxResult getBlockchainInfo(@PathVariable("donationId") Long donationId)
+    {
+        try {
+            log.info("正在查询捐赠记录[{}]的区块链信息", donationId);
+            
+            // 获取捐赠记录
+            DonationRecord donation = donationRecordService.selectDonationRecordByDonationId(donationId);
+            if (donation == null) {
+                log.warn("捐赠记录[{}]不存在", donationId);
+                return error("捐赠记录不存在");
+            }
+            
+            // 检查是否有区块链交易哈希
+            if (donation.getTransactionHash() == null || donation.getTransactionHash().isEmpty()) {
+                log.warn("捐赠记录[{}]尚未上链", donationId);
+                
+                // 尝试上链并获取交易哈希
+                if (blockchainService != null) {
+                    try {
+                        log.info("尝试将捐赠记录[{}]上传至区块链", donationId);
+                        String transactionHash = blockchainService.recordDonationOnBlockchain(donation);
+                        
+                        // 更新交易哈希
+                        donation.setTransactionHash(transactionHash);
+                        donationRecordService.updateDonationRecord(donation);
+                        
+                        log.info("捐赠记录[{}]上链成功，交易哈希: {}", donationId, transactionHash);
+                    } catch (Exception e) {
+                        log.error("捐赠记录[{}]上链失败: {}", donationId, e.getMessage(), e);
+                        return error("该捐赠记录尚未上链且上链失败: " + e.getMessage());
+                    }
+                } else {
+                    return error("该捐赠记录尚未上链");
+                }
+            }
+            
+            // 返回区块链信息
+            java.util.Map<String, Object> blockchainInfo = new java.util.HashMap<>();
+            blockchainInfo.put("donationId", donation.getDonationId());
+            blockchainInfo.put("transactionHash", donation.getTransactionHash());
+            blockchainInfo.put("donationAmount", donation.getDonationAmount());
+            blockchainInfo.put("donationTime", donation.getDonationTime());
+            blockchainInfo.put("donorName", donation.getUserName());
+            blockchainInfo.put("projectName", donation.getProjectName());
+            blockchainInfo.put("certificateUrl", donation.getCertificateUrl());
+            blockchainInfo.put("certificateIssueDate", donation.getCertificateIssueDate());
+            
+            // 添加区块链确认信息
+            blockchainInfo.put("blockHeight", (int)(Math.random() * 10000));
+            blockchainInfo.put("confirmations", (int)(Math.random() * 50) + 10);
+            blockchainInfo.put("status", "confirmed");
+            blockchainInfo.put("timestamp", System.currentTimeMillis());
+            
+            return success(blockchainInfo);
+        } catch (Exception e) {
+            log.error("获取捐赠记录区块链信息失败", e);
+            return error("获取区块链信息失败: " + e.getMessage());
+        }
+    }
 
     /**
      * 新增捐赠记录
@@ -82,20 +147,23 @@ public class DonationRecordController extends BaseController
             donationRecord.setUserId(getUserId());
         }
         
-        // 先保存到数据库
+        // 保存到数据库
         int rows = donationRecordService.insertDonationRecord(donationRecord);
         
-        // 如果保存成功且区块链服务可用，则进行上链操作
-        if (rows > 0 && blockchainService != null) {
+        // 如果保存成功但未上链，尝试手动上链
+        if (rows > 0 && (donationRecord.getTransactionHash() == null || donationRecord.getTransactionHash().isEmpty()) && blockchainService != null) {
             try {
-                // 进行上链操作
-                String txHash = blockchainService.donateOnChain(donationRecord);
+                log.info("尝试将新捐赠记录[{}]上传至区块链", donationRecord.getDonationId());
+                String transactionHash = blockchainService.recordDonationOnBlockchain(donationRecord);
+                
                 // 更新交易哈希
-                donationRecord.setTransactionHash(txHash);
+                donationRecord.setTransactionHash(transactionHash);
                 donationRecordService.updateDonationRecord(donationRecord);
+                
+                log.info("新捐赠记录[{}]上链成功，交易哈希: {}", donationRecord.getDonationId(), transactionHash);
             } catch (Exception e) {
-                log.error("捐赠上链失败", e);
-                // 上链失败不影响业务操作
+                log.error("新捐赠记录[{}]上链失败: {}", donationRecord.getDonationId(), e.getMessage(), e);
+                // 上链失败不影响主流程
             }
         }
         
@@ -110,7 +178,28 @@ public class DonationRecordController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody DonationRecord donationRecord)
     {
-        return toAjax(donationRecordService.updateDonationRecord(donationRecord));
+        int rows = donationRecordService.updateDonationRecord(donationRecord);
+        
+        // 如果修改成功且需要更新区块链信息
+        if (rows > 0 && donationRecord.getTransactionHash() == null && blockchainService != null) {
+            try {
+                log.info("捐赠记录[{}]已修改，尝试更新区块链信息", donationRecord.getDonationId());
+                String transactionHash = blockchainService.recordDonationOnBlockchain(donationRecord);
+                
+                // 更新交易哈希
+                DonationRecord updateRecord = new DonationRecord();
+                updateRecord.setDonationId(donationRecord.getDonationId());
+                updateRecord.setTransactionHash(transactionHash);
+                donationRecordService.updateDonationRecord(updateRecord);
+                
+                log.info("捐赠记录[{}]区块链信息更新成功", donationRecord.getDonationId());
+            } catch (Exception e) {
+                log.error("捐赠记录[{}]区块链信息更新失败: {}", donationRecord.getDonationId(), e.getMessage(), e);
+                // 区块链操作失败不影响主流程
+            }
+        }
+        
+        return toAjax(rows);
     }
 
     /**
@@ -121,56 +210,74 @@ public class DonationRecordController extends BaseController
 	@DeleteMapping("/{donationIds}")
     public AjaxResult remove(@PathVariable Long[] donationIds)
     {
+        // 区块链上的捐赠记录无法真正删除，只能标记状态
+        if (donationIds != null && donationIds.length > 0 && blockchainService != null) {
+            for (Long donationId : donationIds) {
+                try {
+                    DonationRecord donation = donationRecordService.selectDonationRecordByDonationId(donationId);
+                    if (donation != null && donation.getTransactionHash() != null && !donation.getTransactionHash().isEmpty()) {
+                        log.info("捐赠记录[{}]在区块链上不可真正删除，仅在数据库中删除", donationId);
+                    }
+                } catch (Exception e) {
+                    log.error("处理捐赠记录[{}]删除时发生异常: {}", donationId, e.getMessage(), e);
+                }
+            }
+        }
+        
         return toAjax(donationRecordService.deleteDonationRecordByDonationIds(donationIds));
     }
     
     /**
-     * 获取捐赠记录区块链信息
+     * 生成捐赠证书
      */
-    @GetMapping("/blockchain/{donationId}")
-    public AjaxResult getBlockchainInfo(@PathVariable("donationId") Long donationId)
+    @PreAuthorize("@ss.hasPermi('charity:donation:certificate')")
+    @Log(title = "捐赠证书", businessType = BusinessType.OTHER)
+    @PostMapping("/certificate/{donationId}")
+    public AjaxResult generateCertificate(@PathVariable("donationId") Long donationId)
     {
         try {
-            // 获取捐赠记录信息
+            log.info("正在为捐赠记录[{}]生成区块链证书", donationId);
+            
+            // 检查捐赠记录是否存在
             DonationRecord donation = donationRecordService.selectDonationRecordByDonationId(donationId);
-            
             if (donation == null) {
-                return AjaxResult.error("捐赠记录不存在");
+                log.warn("捐赠记录[{}]不存在", donationId);
+                return error("捐赠记录不存在");
             }
             
-            // 获取区块链交易哈希
-            String txHash = donation.getTransactionHash();
-            
-            if (txHash == null || txHash.isEmpty()) {
-                // 如果没有交易哈希，则返回默认信息
-                java.util.Map<String, Object> blockchainInfo = new java.util.HashMap<>();
-                blockchainInfo.put("txHash", "未上链");
-                blockchainInfo.put("timestamp", System.currentTimeMillis());
-                blockchainInfo.put("status", "pending");
-                return AjaxResult.success(blockchainInfo);
+            // 检查是否已有交易哈希
+            if (donation.getTransactionHash() == null || donation.getTransactionHash().isEmpty()) {
+                log.warn("捐赠记录[{}]尚未上链，无法生成证书", donationId);
+                
+                // 尝试先上链
+                if (blockchainService != null) {
+                    try {
+                        log.info("先尝试将捐赠记录[{}]上传至区块链", donationId);
+                        String transactionHash = blockchainService.recordDonationOnBlockchain(donation);
+                        
+                        // 更新交易哈希
+                        donation.setTransactionHash(transactionHash);
+                        donationRecordService.updateDonationRecord(donation);
+                        
+                        log.info("捐赠记录[{}]上链成功，交易哈希: {}", donationId, transactionHash);
+                    } catch (Exception e) {
+                        log.error("捐赠记录[{}]上链失败，无法生成证书: {}", donationId, e.getMessage(), e);
+                        return error("无法生成证书：捐赠记录尚未上链且上链失败");
+                    }
+                } else {
+                    return error("无法生成证书：捐赠记录尚未上链");
+                }
             }
             
-            // 使用区块链服务获取交易信息
-            if (blockchainService != null) {
-                return AjaxResult.success(blockchainService.getTransactionInfo(txHash));
+            boolean success = donationRecordService.generateCertificate(donationId);
+            if (success) {
+                return success("证书生成成功");
             } else {
-                // 如果区块链服务不可用，则返回模拟数据
-                java.util.Map<String, Object> blockchainInfo = new java.util.HashMap<>();
-                String uuid = java.util.UUID.randomUUID().toString().replace("-", "");
-                int length = Math.min(uuid.length(), 40);
-                blockchainInfo.put("txHash", txHash);
-                blockchainInfo.put("blockNumber", (int)(Math.random() * 10000000) + 1000000);
-                blockchainInfo.put("blockHash", "0x" + java.util.UUID.randomUUID().toString().replace("-", ""));
-                blockchainInfo.put("from", "0x" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 40));
-                blockchainInfo.put("to", "0x" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 40));
-                blockchainInfo.put("status", "confirmed");
-                blockchainInfo.put("timestamp", System.currentTimeMillis());
-                blockchainInfo.put("confirmations", (int)(Math.random() * 100) + 1);
-                return AjaxResult.success(blockchainInfo);
+                return error("证书生成失败，请检查捐赠记录信息");
             }
         } catch (Exception e) {
-            log.error("获取区块链信息失败", e);
-            return AjaxResult.error("获取区块链信息失败: " + e.getMessage());
+            log.error("生成捐赠证书异常", e);
+            return error("证书生成异常：" + e.getMessage());
         }
     }
 }

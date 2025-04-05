@@ -1,0 +1,24 @@
+# Fabric 区块链网络配置
+fabric:
+  # 网络配置文件路径
+  networkConfigPath: classpath:fabric/connection-profiles/connection-org1.json
+  # 证书路径
+  certificatePath: classpath:fabric/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/User1@org1.example.com-cert.pem
+  # 私钥路径
+  privateKeyPath: classpath:fabric/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/priv_sk
+  # 钱包路径 - 使用绝对路径
+  walletPath: ${user.home}/fabric-wallet
+  # 用户ID
+  userId: User1
+  # 通道名称 - 确保与测试脚本输出的通道名称一致
+  channelName: mychannel
+  # 链码名称 - 确保与测试脚本输出的链码名称一致
+  chaincodeName: donation
+  # 超时设置（毫秒）
+  timeout: 30000
+  # 是否启用TLS
+  tlsEnabled: false
+  # Peer TLS 证书路径（用于连接验证）
+  peerTlsCertPath: classpath:fabric/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+  # Orderer TLS 证书路径（用于连接验证）
+  ordererTlsCertPath: classpath:fabric/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt 

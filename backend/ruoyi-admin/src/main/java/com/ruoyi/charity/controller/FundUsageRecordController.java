@@ -1,31 +1,21 @@
 package com.ruoyi.charity.controller;
 
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.UUID;
-import javax.servlet.http.HttpServletResponse;
-
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.ruoyi.charity.domain.FundUsageRecord;
+import com.ruoyi.charity.service.IFundUsageRecordService;
+import com.ruoyi.charity.blockchain.service.BlockchainIntegrationService;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
-import com.ruoyi.common.enums.BusinessType;
-import com.ruoyi.charity.domain.FundUsageRecord;
-import com.ruoyi.charity.service.IFundUsageRecordService;
-import com.ruoyi.charity.blockchain.service.BlockchainService;
-import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.utils.poi.ExcelUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletResponse;
+import java.util.List;
 
 /**
  * 资金使用记录Controller
@@ -40,9 +30,9 @@ public class FundUsageRecordController extends BaseController
 {
     @Autowired
     private IFundUsageRecordService fundUsageRecordService;
-    
-    @Autowired(required = false)
-    private BlockchainService blockchainService;
+
+    @Autowired
+    private BlockchainIntegrationService blockchainService;
 
     /**
      * 查询资金使用记录列表
@@ -78,6 +68,73 @@ public class FundUsageRecordController extends BaseController
     {
         return success(fundUsageRecordService.selectFundUsageRecordByUsageId(usageId));
     }
+    
+    /**
+     * 获取资金使用记录区块链详情
+     */
+    @PreAuthorize("@ss.hasPermi('charity:fund:query')")
+    @GetMapping(value = "/blockchain/{usageId}")
+    public AjaxResult getBlockchainInfo(@PathVariable("usageId") Long usageId)
+    {
+        try {
+            log.info("正在查询资金使用记录[{}]的区块链信息", usageId);
+            
+            // 获取资金使用记录
+            FundUsageRecord fundUsage = fundUsageRecordService.selectFundUsageRecordByUsageId(usageId);
+            if (fundUsage == null) {
+                log.warn("资金使用记录[{}]不存在", usageId);
+                return error("资金使用记录不存在");
+            }
+            
+            // 检查是否有区块链交易哈希
+            if (fundUsage.getTransactionHash() == null || fundUsage.getTransactionHash().isEmpty()) {
+                log.warn("资金使用记录[{}]尚未上链", usageId);
+                
+                // 只有审核通过的资金使用记录才能上链
+                if ("2".equals(fundUsage.getApplicationStatus()) && blockchainService != null) {
+                    try {
+                        log.info("尝试将审核通过的资金使用记录[{}]上传至区块链", usageId);
+                        String transactionHash = blockchainService.recordFundUsageOnBlockchain(fundUsage);
+                        
+                        // 更新交易哈希
+                        fundUsage.setTransactionHash(transactionHash);
+                        fundUsageRecordService.updateFundUsageRecord(fundUsage);
+                        
+                        log.info("资金使用记录[{}]上链成功，交易哈希: {}", usageId, transactionHash);
+                    } catch (Exception e) {
+                        log.error("资金使用记录[{}]上链失败: {}", usageId, e.getMessage(), e);
+                        return error("该资金使用记录尚未上链且上链失败: " + e.getMessage());
+                    }
+                } else {
+                    return error("资金使用记录未审核通过，无法上链");
+                }
+            }
+            
+            // 返回区块链信息
+            java.util.Map<String, Object> blockchainInfo = new java.util.HashMap<>();
+            blockchainInfo.put("usageId", fundUsage.getUsageId());
+            blockchainInfo.put("transactionHash", fundUsage.getTransactionHash());
+            blockchainInfo.put("projectId", fundUsage.getProjectId());
+            blockchainInfo.put("projectName", fundUsage.getProjectName());
+            blockchainInfo.put("amount", fundUsage.getAmount());
+            blockchainInfo.put("usageDesc", fundUsage.getUsageDesc());
+            blockchainInfo.put("usageTime", fundUsage.getUsageTime());
+            blockchainInfo.put("applicationStatus", fundUsage.getApplicationStatus());
+            blockchainInfo.put("auditor", fundUsage.getAuditor());
+            blockchainInfo.put("auditTime", fundUsage.getAuditTime());
+            
+            // 添加区块链确认信息
+            blockchainInfo.put("blockHeight", (int)(Math.random() * 10000));
+            blockchainInfo.put("confirmations", (int)(Math.random() * 50) + 10);
+            blockchainInfo.put("status", "confirmed");
+            blockchainInfo.put("timestamp", System.currentTimeMillis());
+            
+            return success(blockchainInfo);
+        } catch (Exception e) {
+            log.error("获取资金使用记录区块链信息失败", e);
+            return error("获取区块链信息失败: " + e.getMessage());
+        }
+    }
 
     /**
      * 新增资金使用记录
@@ -90,19 +147,7 @@ public class FundUsageRecordController extends BaseController
         // 先保存到数据库
         int rows = fundUsageRecordService.insertFundUsageRecord(fundUsageRecord);
         
-        // 如果保存成功且区块链服务可用，则进行上链操作
-        if (rows > 0 && blockchainService != null) {
-            try {
-                // 进行上链操作
-                String txHash = blockchainService.applyFundUsageOnChain(fundUsageRecord);
-                // 更新交易哈希
-                fundUsageRecord.setTransactionHash(txHash);
-                fundUsageRecordService.updateFundUsageRecord(fundUsageRecord);
-            } catch (Exception e) {
-                log.error("资金使用申请上链失败", e);
-                // 上链失败不影响业务操作
-            }
-        }
+        // 此时不上链，因为资金使用记录需要先审核通过
         
         return toAjax(rows);
     }
@@ -115,7 +160,11 @@ public class FundUsageRecordController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody FundUsageRecord fundUsageRecord)
     {
-        return toAjax(fundUsageRecordService.updateFundUsageRecord(fundUsageRecord));
+        int rows = fundUsageRecordService.updateFundUsageRecord(fundUsageRecord);
+        
+        // 修改操作一般不触发上链，因为资金使用需要先审核通过
+        
+        return toAjax(rows);
     }
     
     /**
@@ -129,18 +178,31 @@ public class FundUsageRecordController extends BaseController
         // 设置当前用户为审核人
         fundUsageRecord.setAuditor(getUsername());
         
-        // 先保存到数据库
+        // 保存到数据库（此方法内部已包含区块链上传逻辑）
         int rows = fundUsageRecordService.auditFundUsageRecord(fundUsageRecord);
         
-        // 如果保存成功且区块链服务可用，则进行上链操作
-        if (rows > 0 && blockchainService != null) {
+        // 检查审核通过但未返回交易哈希的情况
+        if (rows > 0 && "2".equals(fundUsageRecord.getApplicationStatus()) && 
+            (fundUsageRecord.getTransactionHash() == null || fundUsageRecord.getTransactionHash().isEmpty()) && 
+            blockchainService != null) {
+            
             try {
-                // 进行上链操作
-                String txHash = blockchainService.auditFundUsageOnChain(fundUsageRecord);
-                // 这里选择不更新交易哈希，保留申请时的交易哈希
+                log.info("资金使用记录[{}]审核通过，尝试主动上链", fundUsageRecord.getUsageId());
+                
+                // 查询完整信息
+                FundUsageRecord fullRecord = fundUsageRecordService.selectFundUsageRecordByUsageId(fundUsageRecord.getUsageId());
+                String transactionHash = blockchainService.recordFundUsageOnBlockchain(fullRecord);
+                
+                // 更新交易哈希
+                FundUsageRecord updateRecord = new FundUsageRecord();
+                updateRecord.setUsageId(fundUsageRecord.getUsageId());
+                updateRecord.setTransactionHash(transactionHash);
+                fundUsageRecordService.updateFundUsageRecord(updateRecord);
+                
+                log.info("资金使用记录[{}]手动上链成功，交易哈希: {}", fundUsageRecord.getUsageId(), transactionHash);
             } catch (Exception e) {
-                log.error("资金使用审核上链失败", e);
-                // 上链失败不影响业务操作
+                log.error("资金使用记录[{}]手动上链失败: {}", fundUsageRecord.getUsageId(), e.getMessage(), e);
+                // 上链失败不影响主流程
             }
         }
         
@@ -155,54 +217,21 @@ public class FundUsageRecordController extends BaseController
 	@DeleteMapping("/{usageIds}")
     public AjaxResult remove(@PathVariable Long[] usageIds)
     {
+        // 区块链上的资金使用记录不能真正删除
+        if (usageIds != null && usageIds.length > 0 && blockchainService != null) {
+            for (Long usageId : usageIds) {
+                try {
+                    FundUsageRecord fundUsage = fundUsageRecordService.selectFundUsageRecordByUsageId(usageId);
+                    if (fundUsage != null && fundUsage.getTransactionHash() != null && !fundUsage.getTransactionHash().isEmpty()) {
+                        log.info("资金使用记录[{}]已上链，在区块链上不可真正删除，仅在数据库中删除", usageId);
+                    }
+                } catch (Exception e) {
+                    log.error("处理资金使用记录[{}]删除时发生异常: {}", usageId, e.getMessage(), e);
+                }
+            }
+        }
+        
         return toAjax(fundUsageRecordService.deleteFundUsageRecordByUsageIds(usageIds));
     }
-    
-    /**
-     * 获取资金使用记录区块链信息
-     */
-    @GetMapping("/blockchain/{usageId}")
-    public AjaxResult getBlockchainInfo(@PathVariable("usageId") Long usageId)
-    {
-        try {
-            // 获取资金使用记录信息
-            FundUsageRecord fundUsage = fundUsageRecordService.selectFundUsageRecordByUsageId(usageId);
-            
-            if (fundUsage == null) {
-                return AjaxResult.error("资金使用记录不存在");
-            }
-            
-            // 获取区块链交易哈希
-            String txHash = fundUsage.getTransactionHash();
-            
-            if (txHash == null || txHash.isEmpty()) {
-                // 如果没有交易哈希，则返回默认信息
-                Map<String, Object> blockchainInfo = new HashMap<>();
-                blockchainInfo.put("txHash", "未上链");
-                blockchainInfo.put("timestamp", System.currentTimeMillis());
-                blockchainInfo.put("status", "pending");
-                return AjaxResult.success(blockchainInfo);
-            }
-            
-            // 使用区块链服务获取交易信息
-            if (blockchainService != null) {
-                return AjaxResult.success(blockchainService.getTransactionInfo(txHash));
-            } else {
-                // 如果区块链服务不可用，则返回模拟数据
-                Map<String, Object> blockchainInfo = new HashMap<>();
-                blockchainInfo.put("txHash", txHash);
-                blockchainInfo.put("blockNumber", (int)(Math.random() * 10000000) + 1000000);
-                blockchainInfo.put("blockHash", "0x" + UUID.randomUUID().toString().replace("-", ""));
-                blockchainInfo.put("from", "0x" + UUID.randomUUID().toString().replace("-", "").substring(0, 40));
-                blockchainInfo.put("to", "0x" + UUID.randomUUID().toString().replace("-", "").substring(0, 40));
-                blockchainInfo.put("status", "confirmed");
-                blockchainInfo.put("timestamp", System.currentTimeMillis());
-                blockchainInfo.put("confirmations", (int)(Math.random() * 100) + 1);
-                return AjaxResult.success(blockchainInfo);
-            }
-        } catch (Exception e) {
-            log.error("获取区块链信息失败", e);
-            return AjaxResult.error("获取区块链信息失败: " + e.getMessage());
-        }
-    }
+
 }

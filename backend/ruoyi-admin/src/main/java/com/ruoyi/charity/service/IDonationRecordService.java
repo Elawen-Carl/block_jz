@@ -58,4 +58,12 @@ public interface IDonationRecordService
      * @return 结果
      */
     public int deleteDonationRecordByDonationId(Long donationId);
+    
+    /**
+     * 生成捐赠证书
+     * 
+     * @param donationId 捐赠记录主键
+     * @return 是否成功生成证书
+     */
+    public boolean generateCertificate(Long donationId);
 }

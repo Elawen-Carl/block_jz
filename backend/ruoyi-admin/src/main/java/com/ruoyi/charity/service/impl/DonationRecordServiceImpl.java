@@ -5,9 +5,13 @@ import com.ruoyi.charity.domain.CharityProject;
 import com.ruoyi.charity.mapper.DonationRecordMapper;
 import com.ruoyi.charity.mapper.CharityProjectMapper;
 import com.ruoyi.charity.service.IDonationRecordService;
+import com.ruoyi.charity.blockchain.service.BlockchainIntegrationService;
 import com.ruoyi.common.utils.DateUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -21,11 +25,16 @@ import java.util.List;
 @Service
 public class DonationRecordServiceImpl implements IDonationRecordService 
 {
+    private static final Logger log = LoggerFactory.getLogger(DonationRecordServiceImpl.class);
+    
     @Autowired
     private DonationRecordMapper donationRecordMapper;
 
     @Autowired
     private CharityProjectMapper charityProjectMapper;
+    
+    @Autowired
+    private BlockchainIntegrationService blockchainService;
 
     /**
      * 查询捐赠记录
@@ -58,6 +67,7 @@ public class DonationRecordServiceImpl implements IDonationRecordService
      * @return 结果
      */
     @Override
+    @Transactional
     public int insertDonationRecord(DonationRecord donationRecord)
     {
         donationRecord.setCreateTime(DateUtils.getNowDate());
@@ -75,7 +85,25 @@ public class DonationRecordServiceImpl implements IDonationRecordService
             }
         }
         
-        return donationRecordMapper.insertDonationRecord(donationRecord);
+        int rows = donationRecordMapper.insertDonationRecord(donationRecord);
+        
+        if (rows > 0) {
+            try {
+                // 将捐赠记录上传到区块链
+                String blockchainDonationId = blockchainService.recordDonationOnBlockchain(donationRecord);
+                
+                // 更新交易哈希值
+                donationRecord.setTransactionHash(blockchainDonationId);
+                donationRecordMapper.updateDonationRecord(donationRecord);
+                
+                log.info("捐赠记录 {} 成功上传到区块链, ID: {}", donationRecord.getDonationId(), blockchainDonationId);
+            } catch (Exception e) {
+                log.error("捐赠记录上传区块链失败: {}", e.getMessage(), e);
+                // 继续处理，区块链上传失败不影响主流程
+            }
+        }
+        
+        return rows;
     }
 
     /**
@@ -90,6 +118,50 @@ public class DonationRecordServiceImpl implements IDonationRecordService
         donationRecord.setUpdateTime(DateUtils.getNowDate());
 
         return donationRecordMapper.updateDonationRecord(donationRecord);
+    }
+    
+    /**
+     * 生成捐赠证书
+     * 
+     * @param donationId 捐赠记录ID
+     * @return 是否成功
+     */
+    @Override
+    public boolean generateCertificate(Long donationId)
+    {
+        DonationRecord donation = donationRecordMapper.selectDonationRecordByDonationId(donationId);
+        if (donation == null) {
+            return false;
+        }
+        
+        // 检查是否已经有证书
+        if (donation.getCertificateUrl() != null && !donation.getCertificateUrl().isEmpty()) {
+            return true;
+        }
+        
+        // 检查是否有区块链交易哈希
+        if (donation.getTransactionHash() == null || donation.getTransactionHash().isEmpty()) {
+            log.error("捐赠记录没有区块链交易哈希，无法生成证书: {}", donationId);
+            return false;
+        }
+        
+        try {
+            // 调用区块链生成证书
+            String certificateInfo = blockchainService.generateDonationCertificate(donation);
+            
+            // 设置证书信息
+            donation.setCertificateUrl(certificateInfo);
+            donation.setCertificateIssueDate(DateUtils.getNowDate());
+            
+            // 更新捐赠记录
+            donationRecordMapper.updateDonationRecord(donation);
+            
+            log.info("为捐赠记录 {} 成功生成证书", donationId);
+            return true;
+        } catch (Exception e) {
+            log.error("捐赠证书生成失败: {}", e.getMessage(), e);
+            return false;
+        }
     }
 
     /**

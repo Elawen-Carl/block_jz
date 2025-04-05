@@ -1,0 +1,21 @@
+{
+  "name": "donation-chaincode",
+  "version": "1.0.0",
+  "description": "Chaincode for charity donation management",
+  "main": "index.js",
+  "engines": {
+    "node": ">=12",
+    "npm": ">=5"
+  },
+  "scripts": {
+    "start": "fabric-chaincode-node start"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "fabric-contract-api": "^2.5.8",
+    "fabric-network": "^2.2.20",
+    "fabric-shim": "^2.5.8"
+  },
+  "keywords": [],
+  "author": ""
+}
