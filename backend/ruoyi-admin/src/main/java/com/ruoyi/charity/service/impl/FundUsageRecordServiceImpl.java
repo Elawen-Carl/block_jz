@@ -100,16 +100,40 @@ public class FundUsageRecordServiceImpl implements IFundUsageRecordService
             fundUsageRecord.setAuditTime(new Date());
         }
         
+        // 确保我们有完整的记录信息
+        FundUsageRecord fullRecord = null;
+        if (fundUsageRecord.getUsageId() != null) {
+            fullRecord = selectFundUsageRecordByUsageId(fundUsageRecord.getUsageId());
+            if (fullRecord != null) {
+                // 更新审核信息
+                fullRecord.setApplicationStatus(fundUsageRecord.getApplicationStatus());
+                fullRecord.setAuditTime(fundUsageRecord.getAuditTime());
+                fullRecord.setAuditor(fundUsageRecord.getAuditor());
+                fullRecord.setAuditRemark(fundUsageRecord.getAuditRemark());
+            } else {
+                fullRecord = fundUsageRecord;
+            }
+        } else {
+            fullRecord = fundUsageRecord;
+        }
+        
         // 如果审核通过，上传到区块链
         if ("2".equals(fundUsageRecord.getApplicationStatus())) {
             try {
-                // 调用区块链服务记录资金使用
-                String blockchainId = blockchainService.recordFundUsageOnBlockchain(fundUsageRecord);
-                
-                // 更新交易哈希
-                fundUsageRecord.setTransactionHash(blockchainId);
-                
-                log.info("资金使用记录 {} 成功上传到区块链, 交易哈希: {}", fundUsageRecord.getUsageId(), blockchainId);
+                // 确保记录中有项目ID
+                if (fullRecord.getProjectId() == null) {
+                    log.warn("资金使用记录缺少项目ID，无法上传到区块链");
+                } else {
+                    log.info("审核通过，开始上传资金使用记录到区块链: {}", fullRecord.getUsageId());
+                    
+                    // 调用区块链服务记录资金使用
+                    String blockchainId = blockchainService.recordFundUsageOnBlockchain(fullRecord);
+                    
+                    // 更新交易哈希
+                    fundUsageRecord.setTransactionHash(blockchainId);
+                    
+                    log.info("资金使用记录 {} 成功上传到区块链, 交易哈希: {}", fullRecord.getUsageId(), blockchainId);
+                }
             } catch (Exception e) {
                 log.error("资金使用记录上传区块链失败: {}", e.getMessage(), e);
                 // 区块链上传失败不影响主流程

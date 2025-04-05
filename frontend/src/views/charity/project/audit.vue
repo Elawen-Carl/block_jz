@@ -350,8 +350,8 @@ function handleAudit(row, approve) {
     projectId: row.projectId,
     projectName: row.projectName,
     auditStatus: approve ? '1' : '0',  // 1:通过, 0:拒绝
-    auditUserId: userStore.userId,
-    auditRemark: ''
+    auditUserId: userStore.id,
+    auditRemark: '',
   };
   auditOpen.value = true;
 }

@@ -64,7 +64,7 @@
         <el-descriptions-item label="目标金额">{{ projectDetail.targetAmount }}元</el-descriptions-item>
         <el-descriptions-item label="已筹金额">{{ projectDetail.currentAmount }}元</el-descriptions-item>
         <el-descriptions-item label="开始时间">{{ parseTime(projectDetail.startTime, '{y}-{m}-{d}')
-          }}</el-descriptions-item>
+        }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ parseTime(projectDetail.endTime, '{y}-{m}-{d}') }}</el-descriptions-item>
         <el-descriptions-item label="项目状态">
           <dict-tag :options="charity_project_status" :value="projectDetail.status" />
@@ -89,9 +89,9 @@
           <el-descriptions-item label="交易哈希">{{ blockchainInfo.txHash }}</el-descriptions-item>
           <el-descriptions-item label="时间戳">{{ parseTime(blockchainInfo.timestamp) }}</el-descriptions-item>
           <el-descriptions-item label="区块号" v-if="blockchainInfo.blockNumber">{{ blockchainInfo.blockNumber
-          }}</el-descriptions-item>
+            }}</el-descriptions-item>
           <el-descriptions-item label="确认数" v-if="blockchainInfo.confirmations">{{ blockchainInfo.confirmations
-          }}</el-descriptions-item>
+            }}</el-descriptions-item>
           <el-descriptions-item label="状态">{{ blockchainInfo.status }}</el-descriptions-item>
         </el-descriptions>
       </div>
@@ -528,7 +528,7 @@ function submitDonate() {
         // 构建捐赠数据
         const donationData = {
           projectId: donateForm.value.projectId,
-          userId: userStore.userId, // 使用userStore.userId获取用户ID
+          userId: userStore.id, // 使用userStore.userId获取用户ID
           donationAmount: donateForm.value.amount,
           remark: donateForm.value.message, // 使用remark字段存储留言
           isAnonymous: donateForm.value.isAnonymous ? 1 : 0,

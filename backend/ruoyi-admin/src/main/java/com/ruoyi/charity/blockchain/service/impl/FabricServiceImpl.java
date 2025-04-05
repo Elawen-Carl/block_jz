@@ -18,6 +18,7 @@ import javax.annotation.Resource;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class FabricServiceImpl implements FabricService {
@@ -106,10 +107,14 @@ public class FabricServiceImpl implements FabricService {
                 return;
             }
 
+            // 生成唯一的交易记录ID，避免主键冲突
+            String uniqueTxId = "tx_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+            log.info("生成唯一交易记录ID: {}, 实际交易ID: {}", uniqueTxId, lastTransactionId);
+            
             BlockchainTransaction transaction = new BlockchainTransaction();
             // 设置交易ID和哈希值
-            transaction.setTxId(lastTransactionId);
-            transaction.setTransactionHash(lastTransactionId);
+            transaction.setTxId(uniqueTxId);  // 使用唯一ID作为txId
+            transaction.setTransactionHash(lastTransactionId);  // 使用实际交易ID作为hash
             
             // 获取最大区块号
             long maxBlockNumber = getMaxBlockNumber();
@@ -128,9 +133,9 @@ public class FabricServiceImpl implements FabricService {
             transaction.setTxTime(new Date()); // 设置交易时间
             
             blockchainTransactionService.insertBlockchainTransaction(transaction);
-            log.info("保存区块链交易记录成功: {}", lastTransactionId);
+            log.info("保存区块链交易记录成功: {}", uniqueTxId);
         } catch (Exception e) {
-            log.error("保存区块链交易记录失败", e);
+            log.error("保存区块链交易记录失败: {}", e.getMessage(), e);
         }
     }
 
@@ -315,6 +320,9 @@ public class FabricServiceImpl implements FabricService {
 
     // ==================== 慈善项目管理相关接口实现 ====================
 
+    /**
+     * 创建慈善项目
+     */
     @Override
     public String createCharityProject(String projectId, String projectInfo) throws Exception {
         log.info("调用链码创建慈善项目: projectId={}", projectId);
@@ -322,21 +330,74 @@ public class FabricServiceImpl implements FabricService {
         validateParameters(projectId, projectInfo);
         
         try {
+            // 1. 检查项目是否已存在
+            try {
+                String existingProject = getProject(projectId);
+                log.info("慈善项目已存在于区块链: {}", projectId);
+                return existingProject; // 返回已存在的项目信息
+            } catch (Exception e) {
+                // 如果是"不存在"错误，则继续创建，否则抛出异常
+                if (e.getMessage() == null || !e.getMessage().contains("不存在")) {
+                    throw e;
+                }
+                log.info("项目 {} 在区块链上不存在，将创建新项目", projectId);
+            }
+            
+            // 2. 创建事务
             Transaction transaction = createTransaction("createCharityProject");
-            byte[] result = transaction.submit(projectId, projectInfo);
-            saveTransactionId();
-            return new String(result, StandardCharsets.UTF_8);
+            
+            // 记录请求信息
+            log.debug("创建慈善项目请求参数: projectId={}, projectInfo={}", projectId, projectInfo);
+            
+            // 3. 提交事务时添加重试逻辑
+            int maxRetries = 3;
+            Exception lastException = null;
+            
+            for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    log.info("创建慈善项目尝试 {}/{}: projectId={}", attempt, maxRetries, projectId);
+                    byte[] result = transaction.submit(projectId, projectInfo);
+                    
+                    // 保存交易记录
+                    saveTransactionId();
+                    
+                    String response = new String(result, StandardCharsets.UTF_8);
+                    log.info("慈善项目创建成功: {}, 响应: {}", projectId, response);
+                    return response;
+                } catch (Exception e) {
+                    lastException = e;
+                    log.warn("创建慈善项目尝试 {}/{} 失败: {}", attempt, maxRetries, e.getMessage());
+                    
+                    // 如果不是因项目已存在导致的错误，则重试
+                    if (e.getMessage() != null && e.getMessage().contains("已存在")) {
+                        log.info("项目 {} 已存在于区块链上，无需重试", projectId);
+                        return projectId; // 直接返回项目ID
+                    }
+                    
+                    // 等待一段时间后重试
+                    if (attempt < maxRetries) {
+                        Thread.sleep(1000 * attempt); // 指数退避
+                    }
+                }
+            }
+            
+            // 所有重试都失败
+            if (lastException != null) {
+                throw lastException;
+            }
+            
+            return projectId;
         } catch (Exception e) {
-            log.error("调用链码创建慈善项目失败: {}", e.getMessage(), e);
-            throw new Exception("调用链码创建慈善项目失败: " + e.getMessage(), e);
+            log.error("创建慈善项目失败: projectId={}, error={}", projectId, e.getMessage(), e);
+            throw e;
         }
     }
 
     @Override
     public String approveProject(String projectId, String organizationId, 
                                 String approvalStatus, String remarks) throws Exception {
-        log.info("调用链码审核慈善项目: projectId={}, organizationId={}, status={}", 
-                 projectId, organizationId, approvalStatus);
+        log.info("调用链码审核慈善项目: projectId={}, organizationId={}, status={}, remarks={}",
+                 projectId, organizationId, approvalStatus, remarks);
         validateContract();
         validateParameters(projectId, organizationId, approvalStatus);
         
@@ -346,12 +407,34 @@ public class FabricServiceImpl implements FabricService {
         }
         
         try {
+            // 创建交易并记录ID
             Transaction transaction = createTransaction("approveProject");
+            
+            // 记录详细的请求参数
+            log.info("审核项目请求参数: projectId={}, organizationId={}, status={}, remarks={}",
+                    projectId, organizationId, approvalStatus, remarks);
+            
+
+            // 提交事务
             byte[] result = transaction.submit(projectId, organizationId, approvalStatus, remarks);
+            
+            // 保存交易记录
             saveTransactionId();
-            return new String(result, StandardCharsets.UTF_8);
+            
+            String response = new String(result, StandardCharsets.UTF_8);
+            log.info("项目审核成功: {}, 响应: {}", projectId, response);
+            
+            return response;
         } catch (Exception e) {
             log.error("调用链码审核慈善项目失败: {}", e.getMessage(), e);
+            
+            // 检查是否是网络或超时问题
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && (errorMsg.contains("timeout") || errorMsg.contains("deadline") || 
+                                    errorMsg.contains("connection") || errorMsg.contains("network"))) {
+                log.warn("可能是网络问题导致审核失败，请稍后重试");
+            }
+            
             throw new Exception("调用链码审核慈善项目失败: " + e.getMessage(), e);
         }
     }
@@ -366,8 +449,19 @@ public class FabricServiceImpl implements FabricService {
             byte[] result = contract.evaluateTransaction("getProject", projectId);
             return new String(result, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            log.error("调用链码获取项目信息失败: {}", e.getMessage(), e);
-            throw new Exception("调用链码获取项目信息失败: " + e.getMessage(), e);
+            // 检查是否是"项目不存在"的错误
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && 
+                (errorMsg.contains("不存在") || 
+                 errorMsg.contains("does not exist") || 
+                 errorMsg.contains("not found"))) {
+                // 对于"不存在"的情况，使用INFO级别而不是ERROR
+                log.info("项目 {} 在区块链上不存在: {}", projectId, errorMsg);
+            } else {
+                // 其他错误仍然使用ERROR级别
+                log.error("调用链码获取项目信息失败: {}", errorMsg, e);
+            }
+            throw new Exception("调用链码获取项目信息失败: " + errorMsg, e);
         }
     }
 

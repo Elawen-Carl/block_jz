@@ -1,5 +1,115 @@
 <template>
   <div class="app-container">
+    <!-- 区块链统计信息卡片 -->
+    <el-row :gutter="20" class="mb8">
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card">
+          <template #header>
+            <div class="card-header">
+              <span><el-icon>
+                  <Histogram />
+                </el-icon> 区块高度</span>
+            </div>
+          </template>
+          <div class="card-body">
+            <el-statistic :value="blockchainStats.totalBlocks || 0">
+              <template #suffix>
+                <span class="text-sm text-gray">区块</span>
+              </template>
+            </el-statistic>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card">
+          <template #header>
+            <div class="card-header">
+              <span><el-icon>
+                  <Document />
+                </el-icon> 交易总数</span>
+            </div>
+          </template>
+          <div class="card-body">
+            <el-statistic :value="blockchainStats.totalTransactions || 0">
+              <template #suffix>
+                <span class="text-sm text-gray">笔</span>
+              </template>
+            </el-statistic>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card">
+          <template #header>
+            <div class="card-header">
+              <span><el-icon>
+                  <Share />
+                </el-icon> 节点总数</span>
+            </div>
+          </template>
+          <div class="card-body">
+            <el-statistic :value="blockchainStats.onlineNodes || 0">
+              <template #suffix>
+                <span class="text-sm text-gray">个</span>
+              </template>
+            </el-statistic>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card">
+          <template #header>
+            <div class="card-header">
+              <span><el-icon>
+                  <Clock />
+                </el-icon> TPS</span>
+            </div>
+          </template>
+          <div class="card-body">
+            <el-statistic :value="blockchainStats.transactionsPerSecond || 0" :precision="2">
+              <template #suffix>
+                <span class="text-sm text-gray">笔/秒</span>
+              </template>
+            </el-statistic>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 最新区块信息卡片 -->
+    <el-card class="mb8" v-loading="blockLoading">
+      <template #header>
+        <div class="card-header">
+          <span><el-icon>
+              <Monitor />
+            </el-icon> 最新区块</span>
+          <el-button type="primary" size="small" plain @click="refreshLatestBlocks">刷新</el-button>
+        </div>
+      </template>
+      <el-table :data="latestBlocks" stripe style="width: 100%">
+        <el-table-column prop="height" label="区块号" width="100" align="center" />
+        <el-table-column prop="dataHash" label="区块哈希" min-width="220">
+          <template #default="scope">
+            <el-tooltip :content="scope.row.dataHash" placement="top" effect="light">
+              <span>{{ truncateHash(scope.row.dataHash) }}</span>
+            </el-tooltip>
+            <el-button link type="primary" size="small" @click="copyText(scope.row.dataHash)">复制</el-button>
+          </template>
+        </el-table-column>
+        <el-table-column prop="txCount" label="交易数" width="100" align="center" />
+        <el-table-column prop="timestamp" label="创建时间" width="180" align="center">
+          <template #default="scope">
+            {{ scope.row.timestamp }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" align="center">
+          <template #default="scope">
+            <el-button link type="primary" @click="viewBlockDetail(scope.row.height)">查看详情</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="96px">
       <el-form-item label="交易编号" prop="txId">
         <el-input v-model="queryParams.txId" placeholder="请输入交易编号" clearable @keyup.enter="handleQuery" />
@@ -70,8 +180,6 @@
     <pagination v-show="total > 0" :total="total" v-model="queryParams.pageNum" :pageSize="queryParams.pageSize"
       @pagination="getList" />
 
-
-
     <!-- 查看区块链交易详细信息对话框 -->
     <el-dialog title="区块链交易详情" v-model="detailOpen" width="1000px" append-to-body>
       <el-descriptions :column="2" border>
@@ -83,7 +191,7 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="交易时间">{{ parseTime(detail.txTime, '{y}-{m}-{d} {h}:{i}:{s}')
-          }}</el-descriptions-item>
+        }}</el-descriptions-item>
         <el-descriptions-item label="交易状态">
           <dict-tag :options="blockchain_tx_status" :value="detail.txStatus" />
         </el-descriptions-item>
@@ -105,11 +213,79 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 区块详情对话框 -->
+    <el-dialog title="区块详情" v-model="blockDetailOpen" width="1000px" append-to-body>
+      <el-skeleton :rows="10" animated v-if="!blockDetail.dataHash" />
+      <template v-else>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="区块号">{{ blockDetail.height }}</el-descriptions-item>
+          <el-descriptions-item label="交易数量">{{ blockDetail.txCount }}</el-descriptions-item>
+          <el-descriptions-item label="区块大小">{{ blockDetail.size }} KB</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ blockDetail.timestamp }}</el-descriptions-item>
+          <el-descriptions-item label="数据哈希" :span="2">
+            <el-input :value="blockDetail.dataHash" readonly>
+              <template #append>
+                <el-button @click="copyText(blockDetail.dataHash)">复制</el-button>
+              </template>
+            </el-input>
+          </el-descriptions-item>
+          <el-descriptions-item label="前块哈希" :span="2">
+            <el-input :value="blockDetail.previousHash" readonly>
+              <template #append>
+                <el-button @click="copyText(blockDetail.previousHash)">复制</el-button>
+              </template>
+            </el-input>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 区块中的交易列表 -->
+        <div class="mt20" v-if="blockDetail.transactions && blockDetail.transactions.length > 0">
+          <div class="sub-title">区块内交易 ({{ blockDetail.transactions ? blockDetail.transactions.length : 0 }})</div>
+          <el-table :data="blockDetail.transactions || []" stripe style="width: 100%">
+            <el-table-column prop="txId" label="交易ID" min-width="220">
+              <template #default="scope">
+                <el-tooltip :content="scope.row.txId" placement="top" effect="light">
+                  <span>{{ truncateHash(scope.row.txId) }}</span>
+                </el-tooltip>
+                <el-button link type="primary" size="small" @click="copyText(scope.row.txId)">复制</el-button>
+              </template>
+            </el-table-column>
+            <el-table-column prop="timestamp" label="时间" width="180">
+              <template #default="scope">
+                {{ scope.row.timestamp }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="type" label="类型" width="120"></el-table-column>
+            <el-table-column label="操作" width="120" align="center">
+              <template #default="scope">
+                <el-button link type="primary" @click="viewTransactionDetail(scope.row.txId)">查看详情</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div class="mt20" v-else>
+          <el-empty description="暂无交易详情数据" />
+          <div class="text-center mt20">
+            <el-button type="primary" @click="loadBlockTransactions(blockDetail.height)">加载交易数据</el-button>
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="blockDetailOpen = false">关闭</el-button>
+          <el-button type="primary" @click="viewPreviousBlock(blockDetail.height - 1)"
+            :disabled="blockDetail.height <= 1">查看前一区块</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="Blockchain">
 import { listBlockchain, getBlockchain } from "@/api/charity/blockchain";
+import { getBlockchainStats, getLatestBlocks, getBlockDetail, getTransactionDetail } from "@/api/charity/blockchainData";
+import { Histogram, Document, Share, Clock, Monitor } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance();
 const { blockchain_related_type, blockchain_tx_status } = proxy.useDict('blockchain_related_type', 'blockchain_tx_status');
@@ -122,6 +298,13 @@ const total = ref(0);
 const daterangeTxTime = ref([]);
 const daterangeCreateTime = ref([]);
 const detail = ref({});
+
+// 区块链统计和最新区块数据
+const blockchainStats = ref({});
+const latestBlocks = ref([]);
+const blockLoading = ref(false);
+const blockDetailOpen = ref(false);
+const blockDetail = ref({});
 
 const data = reactive({
   queryParams: {
@@ -157,6 +340,80 @@ function getList() {
   });
 }
 
+/** 获取区块链统计信息 */
+function getStats() {
+  getBlockchainStats().then(response => {
+    if (response.code === 200) {
+      blockchainStats.value = response.data;
+    } else {
+      proxy.$modal.msgError(response.msg || "获取区块链统计信息失败");
+    }
+  }).catch(() => {
+    proxy.$modal.msgError("获取区块链统计信息失败");
+  });
+}
+
+/** 获取最新区块 */
+function refreshLatestBlocks() {
+  blockLoading.value = true;
+  getLatestBlocks(5).then(response => {
+    if (response.code === 200) {
+      latestBlocks.value = response.data;
+    } else {
+      proxy.$modal.msgError(response.msg || "获取最新区块信息失败");
+    }
+    blockLoading.value = false;
+  }).catch(() => {
+    proxy.$modal.msgError("获取最新区块信息失败");
+    blockLoading.value = false;
+  });
+}
+
+/** 查看区块详情 */
+function viewBlockDetail(blockNumber) {
+  blockLoading.value = true;
+  getBlockDetail(blockNumber).then(response => {
+    if (response.code === 200) {
+      blockDetail.value = response.data;
+      blockDetailOpen.value = true;
+    } else {
+      proxy.$modal.msgError(response.msg || "获取区块详情失败");
+    }
+    blockLoading.value = false;
+  }).catch((error) => {
+    console.error("获取区块详情失败:", error);
+    proxy.$modal.msgError("获取区块详情失败: " + (error.message || error));
+    blockLoading.value = false;
+  });
+}
+
+/** 查看交易详情 */
+function viewTransactionDetail(txId) {
+  getTransactionDetail(txId).then(response => {
+    if (response.code === 200) {
+      // 可以选择在新窗口打开，或者在当前页显示
+      detail.value = {
+        txId: response.data.txId,
+        txTime: response.data.timestamp,
+        txStatus: "1", // 假设交易已确认
+        txHash: response.data.txId,
+        txData: JSON.stringify(response.data)
+      };
+      detailOpen.value = true;
+    } else {
+      proxy.$modal.msgError(response.msg || "获取交易详情失败");
+    }
+  }).catch(() => {
+    proxy.$modal.msgError("获取交易详情失败");
+  });
+}
+
+/** 截断哈希值显示 */
+function truncateHash(hash) {
+  if (!hash) return '';
+  return hash.length > 16 ? hash.substring(0, 8) + '...' + hash.substring(hash.length - 8) : hash;
+}
+
 /** 搜索按钮操作 */
 function handleQuery() {
   queryParams.value.pageNum = 1;
@@ -170,8 +427,6 @@ function resetQuery() {
   proxy.resetForm("queryRef");
   handleQuery();
 }
-
-
 
 /** 导出按钮操作 */
 function handleExport() {
@@ -236,5 +491,90 @@ function formatJson(jsonStr) {
   }
 }
 
+/** 加载区块交易数据 */
+function loadBlockTransactions(blockNumber) {
+  blockLoading.value = true;
+  getBlockDetail(blockNumber).then(response => {
+    if (response.code === 200) {
+      blockDetail.value = response.data;
+    } else {
+      proxy.$modal.msgError(response.msg || "获取区块交易详情失败");
+    }
+    blockLoading.value = false;
+  }).catch((error) => {
+    console.error("获取区块交易详情失败:", error);
+    proxy.$modal.msgError("获取区块交易详情失败: " + (error.message || error));
+    blockLoading.value = false;
+  });
+}
+
+/** 查看前一区块 */
+function viewPreviousBlock(previousBlockNumber) {
+  if (previousBlockNumber > 0) {
+    viewBlockDetail(previousBlockNumber);
+  }
+}
+
+// 初始化
 getList();
+getStats();
+refreshLatestBlocks();
 </script>
+
+<style scoped>
+.stat-card {
+  height: 120px;
+  text-align: center;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60px;
+}
+
+/* 美化统计数字 */
+:deep(.el-statistic__number) {
+  font-size: 28px;
+  font-weight: bold;
+  color: #409EFF;
+}
+
+:deep(.el-statistic__content) {
+  justify-content: center;
+}
+
+.text-sm {
+  font-size: 14px;
+}
+
+.text-gray {
+  color: #909399;
+}
+
+.mb8 {
+  margin-bottom: 8px;
+}
+
+.mt20 {
+  margin-top: 20px;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.sub-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #606266;
+}
+</style>

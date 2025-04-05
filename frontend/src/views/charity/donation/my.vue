@@ -86,9 +86,9 @@
           <dict-tag :options="donation_status" :value="form.status" />
         </el-descriptions-item>
         <el-descriptions-item label="捐赠时间">{{ parseTime(form.donationTime, '{y}-{m}-{d} {h}:{i}:{s}')
-          }}</el-descriptions-item>
+        }}</el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ parseTime(form.createTime, '{y}-{m}-{d} {h}:{i}:{s}')
-          }}</el-descriptions-item>
+        }}</el-descriptions-item>
         <el-descriptions-item label="捐赠留言" :span="2">{{ form.message || '无' }}</el-descriptions-item>
         <el-descriptions-item label="区块链交易" :span="2">
           <div v-if="form.transactionHash">
@@ -192,6 +192,8 @@ import { listComment, addComment } from "@/api/charity/comment";
 import useUserStore from '@/store/modules/user';
 import { isExternal } from "@/utils/validate";
 import html2canvas from 'html2canvas';
+import request from '@/utils/request';
+import { getToken } from '@/utils/auth';
 
 const { proxy } = getCurrentInstance();
 const { donation_status } = proxy.useDict('donation_status');
@@ -329,16 +331,21 @@ function getCertificateUrl(url) {
 
 /** 生成证书 */
 function generateCertificate(row) {
-  // 设置证书数据
-  certificateData.certificateNo = 'CERT-' + row.donationId + '-' + Date.now().toString().substring(8);
-  certificateData.userName = userStore.name;
-  certificateData.projectName = row.projectName;
-  certificateData.donationAmount = row.donationAmount;
-  certificateData.donationTime = row.donationTime;
-  certificateData.issueDate = new Date();
+  // 保存当前捐赠记录信息到form
+  getDonation(row.donationId).then(response => {
+    form.value = response.data;
 
-  // 打开证书预览
-  certificateOpen.value = true;
+    // 设置证书数据
+    certificateData.certificateNo = 'CERT-' + row.donationId + '-' + Date.now().toString().substring(8);
+    certificateData.userName = userStore.name;
+    certificateData.projectName = row.projectName;
+    certificateData.donationAmount = row.donationAmount;
+    certificateData.donationTime = row.donationTime;
+    certificateData.issueDate = new Date();
+
+    // 打开证书预览
+    certificateOpen.value = true;
+  });
 }
 
 /** 保存证书 */
@@ -351,30 +358,78 @@ function saveCertificate() {
     // 转换为图片数据
     const imgData = canvas.toDataURL('image/png');
 
-    // 保存证书URL到捐赠记录
-    const updateData = {
-      donationId: form.value.donationId,
-      certificateUrl: imgData, // 实际项目中应该上传到服务器并保存URL
-      certificateIssueDate: new Date()
-    };
+    // 将base64字符串转换为Blob对象
+    const blob = dataURLtoBlob(imgData);
+    const formData = new FormData();
+    formData.append('file', blob, `donation-certificate-${form.value.donationId}.png`);
 
-    // 更新捐赠记录
-    updateDonation(updateData).then(() => {
-      proxy.$modal.msgSuccess("证书生成成功！");
-      certificateOpen.value = false;
-      // 刷新数据
-      getList();
-      if (viewOpen.value) {
-        // 如果详情页打开，更新详情数据
-        getDonation(form.value.donationId).then(response => {
-          form.value = response.data;
-        });
+    // 显示上传中提示
+    proxy.$modal.loading("正在上传证书，请稍候...");
+
+    // 直接使用axios上传
+    request({
+      url: '/common/upload',
+      method: 'post',
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Authorization': 'Bearer ' + getToken()
       }
+    }).then(response => {
+      proxy.$modal.closeLoading(); // 关闭加载提示
+
+      if (response.code === 200) {
+        // 获取上传后的图片URL
+        const imageUrl = response.url;
+
+        // 保存证书URL到捐赠记录
+        const updateData = {
+          donationId: form.value.donationId,
+          certificateUrl: imageUrl, // 使用服务器返回的URL
+          certificateIssueDate: new Date()
+        };
+
+        // 更新捐赠记录
+        updateDonation(updateData).then(() => {
+          proxy.$modal.msgSuccess("证书生成成功！");
+          certificateOpen.value = false;
+          // 刷新数据
+          getList();
+          if (viewOpen.value) {
+            // 如果详情页打开，更新详情数据
+            getDonation(form.value.donationId).then(response => {
+              form.value = response.data;
+            });
+          }
+        }).catch(error => {
+          console.error("保存证书URL失败", error);
+          proxy.$modal.msgError("保存证书失败，请重试");
+        });
+      } else {
+        proxy.$modal.msgError(response.msg || "上传图片失败");
+      }
+    }).catch(error => {
+      proxy.$modal.closeLoading(); // 关闭加载提示
+      console.error("上传图片失败", error);
+      proxy.$modal.msgError("上传图片失败，请重试");
     });
 
     // 自动下载证书
     downloadImage(imgData, `捐赠证书-${certificateData.projectName}.png`);
   });
+}
+
+/** 将base64转换为Blob对象 */
+function dataURLtoBlob(dataURL) {
+  const arr = dataURL.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
 }
 
 /** 下载证书 */

@@ -99,16 +99,51 @@ public class CharityProjectServiceImpl implements ICharityProjectService
         charityProject.setUpdateTime(DateUtils.getNowDate());
         
         // 检查是否是审核操作
-        if (charityProject.getAuditStatus() != null && 
-            charityProject.getBlockchainId() != null && 
-            !charityProject.getBlockchainId().isEmpty()) {
-            try {
-                // 同步审核状态到区块链
-                blockchainService.approveProjectOnBlockchain(charityProject);
-                log.info("项目 {} 审核状态已同步到区块链", charityProject.getProjectId());
-            } catch (Exception e) {
-                log.error("项目审核状态同步到区块链失败: {}", e.getMessage(), e);
-                // 继续处理，区块链同步失败不影响主流程
+        if (charityProject.getAuditStatus() != null) {
+            // 如果是审核操作，且审核时间未设置，则自动设置审核时间
+            if (charityProject.getAuditTime() == null) {
+                charityProject.setAuditTime(DateUtils.getNowDate());
+                log.info("项目 {} 设置审核时间: {}", charityProject.getProjectId(), charityProject.getAuditTime());
+            }
+            
+            // 获取完整的项目信息
+            CharityProject fullProject = null;
+            if (charityProject.getProjectId() != null) {
+                fullProject = selectCharityProjectByProjectId(charityProject.getProjectId());
+                if (fullProject != null) {
+                    // 合并审核字段到完整项目信息
+                    fullProject.setAuditStatus(charityProject.getAuditStatus());
+                    fullProject.setAuditTime(charityProject.getAuditTime());
+                    fullProject.setAuditRemark(charityProject.getAuditRemark());
+                    
+                    // 同步审核状态到区块链
+                    if (fullProject.getBlockchainId() != null && !fullProject.getBlockchainId().isEmpty()) {
+                        try {
+                            log.info("尝试将项目 {} 的审核状态同步到区块链", fullProject.getProjectId());
+                            boolean success = blockchainService.approveProjectOnBlockchain(fullProject);
+                            if (success) {
+                                log.info("项目 {} 审核状态已成功同步到区块链", fullProject.getProjectId());
+                            } else {
+                                log.warn("项目 {} 审核状态同步到区块链失败", fullProject.getProjectId());
+                            }
+                        } catch (Exception e) {
+                            log.error("项目 {} 审核状态同步到区块链失败: {}", fullProject.getProjectId(), e.getMessage(), e);
+                            // 继续处理，区块链同步失败不影响主流程
+                        }
+                    } else if ("1".equals(fullProject.getAuditStatus())) {
+                        // 如果是审核通过但没有区块链ID，尝试上链
+                        try {
+                            log.info("项目 {} 审核通过但无区块链ID，尝试上链", fullProject.getProjectId());
+                            String blockchainId = blockchainService.uploadProjectToBlockchain(fullProject);
+                            if (blockchainId != null && !blockchainId.isEmpty()) {
+                                log.info("项目 {} 上链成功，区块链ID: {}", fullProject.getProjectId(), blockchainId);
+                                charityProject.setBlockchainId(blockchainId);
+                            }
+                        } catch (Exception e) {
+                            log.error("项目 {} 上链失败: {}", fullProject.getProjectId(), e.getMessage(), e);
+                        }
+                    }
+                }
             }
         }
         

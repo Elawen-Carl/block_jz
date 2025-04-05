@@ -26,6 +26,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectProjectCommentVo"/>
         <where>  
             <if test="projectName != null "> and p.project_name = #{projectName}</if>
+            <if test="projectId != null "> and p.project_id = #{projectId}</if>
             <if test="userName != null "> and u.nick_name = #{userName}</if>
             <if test="params.beginCreateTime != null and params.beginCreateTime != '' and params.endCreateTime != null and params.endCreateTime != ''"> and create_time between #{params.beginCreateTime} and #{params.endCreateTime}</if>
         </where>

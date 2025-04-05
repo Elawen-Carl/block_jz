@@ -142,32 +142,40 @@ public class DonationRecordController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody DonationRecord donationRecord)
     {
-        // 如果没有提供用户ID，则使用当前登录用户的ID
-        if (donationRecord.getUserId() == null) {
-            donationRecord.setUserId(getUserId());
-        }
-        
-        // 保存到数据库
-        int rows = donationRecordService.insertDonationRecord(donationRecord);
-        
-        // 如果保存成功但未上链，尝试手动上链
-        if (rows > 0 && (donationRecord.getTransactionHash() == null || donationRecord.getTransactionHash().isEmpty()) && blockchainService != null) {
-            try {
-                log.info("尝试将新捐赠记录[{}]上传至区块链", donationRecord.getDonationId());
-                String transactionHash = blockchainService.recordDonationOnBlockchain(donationRecord);
-                
-                // 更新交易哈希
-                donationRecord.setTransactionHash(transactionHash);
-                donationRecordService.updateDonationRecord(donationRecord);
-                
-                log.info("新捐赠记录[{}]上链成功，交易哈希: {}", donationRecord.getDonationId(), transactionHash);
-            } catch (Exception e) {
-                log.error("新捐赠记录[{}]上链失败: {}", donationRecord.getDonationId(), e.getMessage(), e);
-                // 上链失败不影响主流程
+        try {
+            // 如果没有提供用户ID，则使用当前登录用户的ID
+            if (donationRecord.getUserId() == null) {
+                donationRecord.setUserId(getUserId());
             }
+            
+            // 保存到数据库
+            int rows = donationRecordService.insertDonationRecord(donationRecord);
+            
+            // 如果保存成功但未上链，尝试手动上链
+            if (rows > 0 && (donationRecord.getTransactionHash() == null || donationRecord.getTransactionHash().isEmpty()) && blockchainService != null) {
+                try {
+                    log.info("尝试将新捐赠记录[{}]上传至区块链", donationRecord.getDonationId());
+                    String transactionHash = blockchainService.recordDonationOnBlockchain(donationRecord);
+                    
+                    // 更新交易哈希
+                    donationRecord.setTransactionHash(transactionHash);
+                    donationRecordService.updateDonationRecord(donationRecord);
+                    
+                    log.info("新捐赠记录[{}]上链成功，交易哈希: {}", donationRecord.getDonationId(), transactionHash);
+                } catch (Exception e) {
+                    log.error("新捐赠记录[{}]上链失败: {}", donationRecord.getDonationId(), e.getMessage(), e);
+                    // 上链失败不影响主流程，但记录错误到响应中
+                    return AjaxResult.success("捐赠记录已保存，但区块链上传失败: " + e.getMessage())
+                        .put("donationId", donationRecord.getDonationId())
+                        .put("blockchainError", e.getMessage());
+                }
+            }
+            
+            return toAjax(rows);
+        } catch (Exception e) {
+            log.error("创建捐赠记录失败", e);
+            return error("创建捐赠记录失败: " + e.getMessage());
         }
-        
-        return toAjax(rows);
     }
 
     /**
@@ -183,6 +191,7 @@ public class DonationRecordController extends BaseController
         // 如果修改成功且需要更新区块链信息
         if (rows > 0 && donationRecord.getTransactionHash() == null && blockchainService != null) {
             try {
+                donationRecord = donationRecordService.selectDonationRecordByDonationId(donationRecord.getDonationId());
                 log.info("捐赠记录[{}]已修改，尝试更新区块链信息", donationRecord.getDonationId());
                 String transactionHash = blockchainService.recordDonationOnBlockchain(donationRecord);
                 
